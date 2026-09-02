@@ -13,6 +13,7 @@
 - 本地自动答题辅助：高置信度匹配可填入本地练习，低置信度只给候选和证据，不自动提交外部平台
 - 截图/OCR：批量识别题干和选项；OCR 与本地题库匹配需同时达到高置信度才允许填入
 - 浏览器只填入辅助：Tampermonkey userscript 仅更新标准 radio/checkbox，不提交页面
+- Windows onedir：PyInstaller 打包脚本、独立 `%LOCALAPPDATA%\QuizAssistant\data` 数据目录和端口诊断启动器
 
 ## Windows 快速开始
 
@@ -44,6 +45,8 @@ python -m quiz_assistant backup create
 Phase C 已提供服务端远程只读门禁、PostgreSQL 数据库目标适配和 Caddy HTTPS 示例。启动边界、环境变量和验证步骤见 [`deploy/README.md`](deploy/README.md)、[`.env.remote.example`](.env.remote.example) 和 [`deploy/Caddyfile.example`](deploy/Caddyfile.example)。远程写入、导入、备份恢复和外部 AI 仍保持关闭，待 staging migration/import 和安全测试完成后再开放。
 
 SQLite 到远程环境的迁移快照可使用 `quiz snapshot-export --out migration.snapshot.json` 和 `quiz snapshot-import --source migration.snapshot.json --db new.db`；快照默认不包含 session。PostgreSQL schema 可使用 `quiz postgres-migrate --database-url <url>` 执行，快照导入使用 `quiz postgres-import-snapshot --database-url <url> --source migration.snapshot.json`。运行前需安装 `.[remote]` 可选依赖，并先在 staging 数据库演练。
+
+Windows onedir 构建和数据/备份回滚操作见 [`docs/windows-operations.md`](docs/windows-operations.md)；构建命令为 `.\packaging\build.ps1`，启动命令为 `.\packaging\run.ps1`。远程写入、导入、备份恢复和外部 AI 仍保持服务端门禁。
 
 ## 开发与验证
 

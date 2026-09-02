@@ -2,7 +2,7 @@
 
 目标：在不破坏现有 CLI、domain/application service、SQLite 数据和 14 个测试的前提下，逐步交付 Web、合规边界和 Windows 发布能力。每一阶段遵循 **先写失败测试（RED）→最小实现（GREEN）→重构（REFACTOR）→回归与回滚演练**。
 
-当前进度：C14/C15 核心路径、C16 Vue 3/Vite 页面与本机 Playwright smoke、C17 AI allowlist/脱敏基础门禁已完成；Phase A/B 已实现 SQLite workspace 回填、local owner、Argon2 密码、可撤销服务端 session、角色/membership 和 API 数据隔离，并通过全量 Python 测试与 Ruff。Phase C 已交付 PostgreSQL 初始 schema/事务 migration runner、SQLite 无 session 迁移快照、PostgreSQL database target/repository 适配、远程只读 API 门禁、loopback/TLS/可信代理配置校验、显式远程 owner 幂等引导、Trusted Host、Caddy 示例和部署 smoke；真实 staging 联调、Phase D 远程写入/导入/备份恢复/workspace AI provider，以及 C18 SQLite 在线备份与 PyInstaller 发布仍待实施。
+当前进度：C14/C15 核心路径、C16 Vue 3/Vite 页面与本机 Playwright smoke、C17 AI allowlist/脱敏基础门禁已完成；Phase A/B 已实现 SQLite workspace 回填、local owner、Argon2 密码、可撤销服务端 session、角色/membership 和 API 数据隔离，并通过全量 Python 测试与 Ruff。Phase C 已交付 PostgreSQL 初始 schema/事务 migration runner、SQLite 无 session 迁移快照、PostgreSQL database target/repository 适配、远程只读 API 门禁、loopback/TLS/可信代理配置校验、显式远程 owner 幂等引导、Trusted Host、Caddy 示例和部署 smoke；真实 staging 联调、Phase D 远程写入/导入/备份恢复/workspace AI provider，以及 C18 的 uv 锁定、SQLite 在线备份演练和正式发布验收仍待实施。C18 第一刀（PyInstaller onedir、前端资源托管、独立数据目录启动器、端口诊断）已完成本机 smoke。
 
 ## 用户确认的账户与远程路线
 
@@ -21,7 +21,7 @@
 | C15 | FastAPI API | API app、schema、auth、health/queries/practice/reviews/import/backup | API 目录可移除，CLI 不受影响 |
 | C16 | Vue 3/Vite 前端与 E2E | 页面、API client、Playwright 测试 | 继续使用 CLI；不写入真实数据 |
 | C17 | 合规与安全边界 | allowlist、确认、审计、停止/拒绝路径 | 关闭外部 provider 和写操作开关 |
-| C18 | Windows 运维与发布 | uv 锁定、迁移/备份、PyInstaller onedir、启动器 | 回到 Python+uv 运行包和已验证备份 |
+| C18 | 进行中 | PyInstaller onedir、前端资源托管、独立数据目录启动器、端口诊断已完成；下一步为 uv 锁定、SQLite 在线备份演练和正式发布验收。 | 回到 Python+uv 运行包和已验证备份 |
 
 ## C14 — CLI
 

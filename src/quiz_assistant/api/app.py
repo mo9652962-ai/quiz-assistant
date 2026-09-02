@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import secrets
 import tempfile
 from contextlib import asynccontextmanager
@@ -21,7 +22,7 @@ from fastapi import (
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from quiz_assistant.api.schemas import (
@@ -542,6 +543,19 @@ def create_app(
             sha256=sha256(app.state.db_target),
             verified=True,
         )
+
+    frontend_dist = os.getenv("QUIZ_FRONTEND_DIST")
+    if frontend_dist:
+        frontend_root = Path(frontend_dist).resolve()
+        frontend_index = frontend_root / "index.html"
+        if frontend_index.is_file():
+
+            @app.get("/{path:path}", include_in_schema=False)
+            def frontend_route(path: str = ""):
+                candidate = (frontend_root / path).resolve()
+                if frontend_root in candidate.parents and candidate.is_file():
+                    return FileResponse(candidate)
+                return FileResponse(frontend_index)
 
     return app
 

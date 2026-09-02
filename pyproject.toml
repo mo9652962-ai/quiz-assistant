@@ -21,6 +21,7 @@ dependencies = [
 dev = ["pytest>=8,<9", "ruff>=0.6,<1", "httpx2>=2,<3"]
 remote = ["psycopg[binary]>=3.2,<4"]
 ocr = ["Pillow>=10,<13", "pytesseract>=0.3.10,<1"]
+package = ["pyinstaller>=6.0,<7"]
 
 [project.scripts]
 quiz = "quiz_assistant.cli:main"
