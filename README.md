@@ -46,7 +46,7 @@ Phase C 已提供服务端远程只读门禁、PostgreSQL 数据库目标适配�
 
 SQLite 到远程环境的迁移快照可使用 `quiz snapshot-export --out migration.snapshot.json` 和 `quiz snapshot-import --source migration.snapshot.json --db new.db`；快照默认不包含 session。PostgreSQL schema 可使用 `quiz postgres-migrate --database-url <url>` 执行，快照导入使用 `quiz postgres-import-snapshot --database-url <url> --source migration.snapshot.json`。运行前需安装 `.[remote]` 可选依赖，并先在 staging 数据库演练。
 
-Windows onedir 构建、版本发布目录、SHA-256 清单和数据/备份回滚操作见 [`docs/windows-operations.md`](docs/windows-operations.md)；构建命令为 `.\packaging\build.ps1`，发布验收命令为 `.\packaging\release.ps1` 加 `.\packaging\verify-release.ps1`，启动命令为 `.\packaging\run.ps1`。远程写入、导入、备份恢复和外部 AI 仍保持服务端门禁。
+Windows onedir 构建、普通用户安装包、版本发布目录、SHA-256 清单和数据/备份回滚操作见 [`docs/windows-operations.md`](docs/windows-operations.md)；构建命令为 `.\packaging\build.ps1`，安装包命令为 `.\packaging\build-installer.ps1`，发布验收命令为 `.\packaging\release.ps1` 加 `.\packaging\verify-release.ps1`，启动命令为 `.\packaging\run.ps1`。远程写入、导入、备份恢复和外部 AI 仍保持服务端门禁。
 
 ## 开发与验证
 

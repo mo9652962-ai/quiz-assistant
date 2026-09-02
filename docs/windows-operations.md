@@ -18,6 +18,20 @@ Pop-Location
 
 产物位于 `artifacts/onedir/quiz-assistant/`，首发使用目录包，不使用 onefile。安装目录可以替换，用户数据不会放在安装目录。
 
+## 普通用户安装包
+
+普通用户分发使用 Inno Setup 安装包。先完成 onedir 构建，再在已安装 Inno Setup 且 `ISCC.exe`
+可从 PATH 找到的机器上执行：
+
+```powershell
+.\packaging\build-installer.ps1
+```
+
+安装包位于 `artifacts/installer/QuizAssistant-0.1.0-setup.exe`。它安装程序到
+`%ProgramFiles%\QuizAssistant`，启动时把数据库放在当前用户的
+`%LOCALAPPDATA%\QuizAssistant\data`，卸载不会删除用户数据库、备份或导出文件。安装包在没有
+签名证书时仍可构建，但 Windows 可能显示未知发布者；正式分发前必须使用组织证书签名。
+
 ## 发布目录和 SHA-256 清单
 
 正式交付前，将已构建的 onedir 目录复制到带版本号的发布目录，并生成不包含自身的 `release-manifest.json`：

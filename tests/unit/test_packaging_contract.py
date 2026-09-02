@@ -21,6 +21,9 @@ def test_windows_packaging_is_onedir_and_keeps_data_outside_install_dir():
     assert "migrations" in spec
     assert "from quiz_assistant.server import app" in launcher
     assert "_MEIPASS" in launcher
+    assert "LOCALAPPDATA" in launcher
+    assert "QuizAssistant" in launcher
+    assert '"data"' in launcher
     assert "onedir" in build.lower()
     assert "LOCALAPPDATA" in run
     assert "QUIZ_DB_PATH" in run
@@ -71,6 +74,20 @@ def test_postgres_staging_smoke_requires_database_url_and_explicit_write_acknowl
     assert "--locked" in smoke
     assert "PostgreSQL staging" in smoke
     assert "$env:QUIZ_DATABASE_URL" not in smoke.split("Write-Output")[-1]
+
+
+def test_windows_installer_is_user_facing_and_keeps_user_data_on_uninstall():
+    installer = (ROOT / "packaging" / "quiz-assistant.iss").read_text(encoding="utf-8")
+    build = (ROOT / "packaging" / "build-installer.ps1").read_text(encoding="utf-8")
+
+    assert "DefaultDirName={autopf}\\QuizAssistant" in installer
+    assert "PrivilegesRequired=admin" in installer
+    assert "recursesubdirs" in installer
+    assert "{localappdata}" not in installer
+    assert "[UninstallDelete]" not in installer
+    assert "ISCC.exe" in build or '"iscc"' in build
+    assert "Set-AuthenticodeSignature" in build
+    assert "Get-AuthenticodeSignature" in build
 
 
 def test_configured_frontend_serves_spa_routes_without_touching_api_routes(tmp_path, monkeypatch):

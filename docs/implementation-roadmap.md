@@ -21,7 +21,7 @@
 | C15 | FastAPI API | API app、schema、auth、health/queries/practice/reviews/import/backup | API 目录可移除，CLI 不受影响 |
 | C16 | Vue 3/Vite 前端与 E2E | 页面、API client、Playwright 测试 | 继续使用 CLI；不写入真实数据 |
 | C17 | 合规与安全边界 | allowlist、确认、审计、停止/拒绝路径 | 关闭外部 provider 和写操作开关 |
-| C18 | 进行中 | PyInstaller onedir、前端资源托管、独立数据目录启动器、端口诊断、SQLite `Connection.backup()`、`uv.lock`、版本发布目录和 SHA-256 manifest 校验已完成；下一步为 Windows Authenticode 签名、跨机器安装验收和 staging 迁移联调。 | 回到 Python+uv 运行包和已验证备份 |
+| C18 | 进行中 | PyInstaller onedir、前端资源托管、独立数据目录启动器、端口诊断、SQLite `Connection.backup()`、`uv.lock`、版本发布目录/SHA-256 manifest、Inno Setup 安装脚本和清洁安装验收已完成；下一步为安装包实际编译、Authenticode 签名、跨机器安装验收和 staging 迁移联调。 | 回到 Python+uv 运行包和已验证备份 |
 
 ## C14 — CLI
 
