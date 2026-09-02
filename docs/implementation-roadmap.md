@@ -2,7 +2,16 @@
 
 目标：在不破坏现有 CLI、domain/application service、SQLite 数据和 14 个测试的前提下，逐步交付 Web、合规边界和 Windows 发布能力。每一阶段遵循 **先写失败测试（RED）→最小实现（GREEN）→重构（REFACTOR）→回归与回滚演练**。
 
-当前进度：C14/C15 核心路径已实现并通过 21 个测试与 Ruff；C16 已加入 Vue 3/Vite 页面、统一 API client、独立端口代理和本机 Playwright smoke；C17 已加入 AI allowlist/脱敏基础门禁；账户模型、远程 TLS 和用户隔离的独立设计已完成。完整多用户账户实现、C18 SQLite 在线备份与 PyInstaller 发布仍待实施。
+当前进度：C14/C15 核心路径、C16 Vue 3/Vite 页面与本机 Playwright smoke、C17 AI allowlist/脱敏基础门禁已完成；Phase A/B 已实现 SQLite workspace 回填、local owner、Argon2 密码、可撤销服务端 session、角色/membership 和 API 数据隔离，并通过 26 个 Python 测试与 Ruff。Phase C PostgreSQL/Caddy HTTPS 只读试运行、Phase D 远程写入/导入/备份恢复/workspace AI provider，以及 C18 SQLite 在线备份与 PyInstaller 发布仍待实施。
+
+## 用户确认的账户与远程路线
+
+| 阶段 | 状态 | 已交付/下一步 |
+|---|---|---|
+| Phase A | 已实现 | 现有 SQLite 初始化为 `local-default` workspace，回填 `local-owner` 与 owner membership，旧题库/练习/答题/复习记录归属本地 workspace。 |
+| Phase B | 已实现 | `users`、`sessions`、`workspace_memberships`、Argon2id 密码哈希；登录、me、logout、session 撤销、角色校验及 API workspace/user scope。 |
+| Phase C | 待实施 | PostgreSQL 适配、Caddy HTTPS、回环 FastAPI 上游、远程只读 pilot 与部署 smoke。 |
+| Phase D | 待实施 | 远程写入、导入、备份恢复和 workspace 级 AI provider；每项都需独立授权与回归测试。 |
 
 ## 阶段总览
 

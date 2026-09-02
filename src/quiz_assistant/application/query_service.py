@@ -14,8 +14,9 @@ def query_questions(
     options: list[str] | None = None,
     top_k: int = 5,
     bank: str | None = None,
+    workspace_id: str | None = None,
 ) -> MatchResult:
     initialize(db_path)
     with connect(db_path) as db:
-        questions = list_questions(db, bank=bank)
+        questions = list_questions(db, bank=bank, workspace_id=workspace_id)
     return match_questions(questions, stem, options, top_k)

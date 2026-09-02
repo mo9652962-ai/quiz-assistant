@@ -20,22 +20,43 @@ def utc_now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def ensure_bank(db: sqlite3.Connection, name: str, source: str | None = None) -> int:
+def ensure_bank(
+    db: sqlite3.Connection,
+    name: str,
+    source: str | None = None,
+    workspace_id: str = "local-default",
+) -> int:
     db.execute(
-        "INSERT OR IGNORE INTO question_banks(name, source, created_at) VALUES (?, ?, ?)",
-        (name, source, utc_now()),
+        "INSERT OR IGNORE INTO question_banks(name, source, workspace_id, created_at) VALUES (?, ?, ?, ?)",
+        (name, source, workspace_id, utc_now()),
     )
-    return int(db.execute("SELECT id FROM question_banks WHERE name = ?", (name,)).fetchone()[0])
+    row = db.execute(
+        "SELECT id FROM question_banks WHERE name = ? AND workspace_id = ?",
+        (name, workspace_id),
+    ).fetchone()
+    if not row:
+        raise ValueError(f"question bank {name!r} already belongs to another workspace")
+    return int(row[0])
 
 
-def question_exists(db: sqlite3.Connection, question_id: str) -> bool:
-    return db.execute("SELECT 1 FROM questions WHERE id = ?", (question_id,)).fetchone() is not None
+def question_exists(
+    db: sqlite3.Connection, question_id: str, workspace_id: str | None = None
+) -> bool:
+    query = "SELECT 1 FROM questions q JOIN question_banks b ON b.id = q.bank_id WHERE q.id = ?"
+    params: list[object] = [question_id]
+    if workspace_id:
+        query += " AND b.workspace_id = ?"
+        params.append(workspace_id)
+    return db.execute(query, params).fetchone() is not None
 
 
 def insert_question(
-    db: sqlite3.Connection, question: Question, source_file: str | None = None
+    db: sqlite3.Connection,
+    question: Question,
+    source_file: str | None = None,
+    workspace_id: str = "local-default",
 ) -> None:
-    bank_id = ensure_bank(db, question.bank, source_file)
+    bank_id = ensure_bank(db, question.bank, source_file, workspace_id)
     db.execute(
         """INSERT INTO questions(id, bank_id, version, type, stem, normalized_stem, answer_kind, explanation, status, difficulty, source_json, tags_json, answer_aliases_json)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -103,12 +124,19 @@ def row_to_question(db: sqlite3.Connection, row: sqlite3.Row) -> Question:
 
 
 def list_questions(
-    db: sqlite3.Connection, bank: str | None = None, status: str = "active", tag: str | None = None
+    db: sqlite3.Connection,
+    bank: str | None = None,
+    status: str = "active",
+    tag: str | None = None,
+    workspace_id: str | None = None,
 ) -> list[Question]:
     query = (
         "SELECT q.* FROM questions q JOIN question_banks b ON b.id = q.bank_id WHERE q.status = ?"
     )
     params: list[object] = [status]
+    if workspace_id:
+        query += " AND b.workspace_id = ?"
+        params.append(workspace_id)
     if bank:
         query += " AND b.name = ?"
         params.append(bank)
@@ -119,16 +147,29 @@ def list_questions(
     return [row_to_question(db, row) for row in db.execute(query, params).fetchall()]
 
 
-def get_question(db: sqlite3.Connection, question_id: str) -> Question | None:
-    row = db.execute("SELECT * FROM questions WHERE id = ?", (question_id,)).fetchone()
+def get_question(
+    db: sqlite3.Connection, question_id: str, workspace_id: str | None = None
+) -> Question | None:
+    query = "SELECT q.* FROM questions q JOIN question_banks b ON b.id = q.bank_id WHERE q.id = ?"
+    params: list[object] = [question_id]
+    if workspace_id:
+        query += " AND b.workspace_id = ?"
+        params.append(workspace_id)
+    row = db.execute(query, params).fetchone()
     return row_to_question(db, row) if row else None
 
 
-def create_session(db: sqlite3.Connection, mode: str, filter_json: str = "{}") -> str:
+def create_session(
+    db: sqlite3.Connection,
+    mode: str,
+    filter_json: str = "{}",
+    user_id: str = "local-owner",
+    workspace_id: str = "local-default",
+) -> str:
     session_id = str(uuid.uuid4())
     db.execute(
-        "INSERT INTO practice_sessions(id, mode, started_at, filter_json) VALUES (?, ?, ?, ?)",
-        (session_id, mode, utc_now(), filter_json),
+        "INSERT INTO practice_sessions(id, mode, started_at, filter_json, user_id, workspace_id) VALUES (?, ?, ?, ?, ?, ?)",
+        (session_id, mode, utc_now(), filter_json, user_id, workspace_id),
     )
     return session_id
 
@@ -141,6 +182,8 @@ def record_answer(
     method: str | None,
     confidence: float | None,
     elapsed_ms: int | None,
+    user_id: str = "local-owner",
+    workspace_id: str = "local-default",
 ) -> bool:
     submitted = {
         part.strip().upper() for part in user_answer.replace(";", ",").split(",") if part.strip()
@@ -152,7 +195,7 @@ def record_answer(
     else:
         is_correct = submitted == expected
     db.execute(
-        "INSERT INTO answer_events(session_id, question_id, question_version, user_answer, is_correct, match_method, confidence, elapsed_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO answer_events(session_id, question_id, question_version, user_answer, is_correct, match_method, confidence, elapsed_ms, created_at, user_id, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             session_id,
             question.id,
@@ -163,18 +206,30 @@ def record_answer(
             confidence,
             elapsed_ms,
             utc_now(),
+            user_id,
+            workspace_id,
         ),
     )
     return is_correct
 
 
 def get_review_items(
-    db: sqlite3.Connection, *, wrong: bool = False, due: bool = False, limit: int = 20
+    db: sqlite3.Connection,
+    *,
+    wrong: bool = False,
+    due: bool = False,
+    limit: int = 20,
+    user_id: str = "local-owner",
+    workspace_id: str = "local-default",
 ) -> list[ReviewItem]:
-    query = "SELECT q.*, rs.due_at, rs.interval_days, rs.ease, rs.repetitions, rs.lapses FROM questions q JOIN review_state rs ON rs.question_id=q.id WHERE 1=1"
-    params: list[object] = []
+    query = """SELECT q.*, rs.due_at, rs.interval_days, rs.ease, rs.repetitions, rs.lapses
+               FROM questions q JOIN review_state rs ON rs.question_id=q.id
+               JOIN question_banks b ON b.id=q.bank_id
+               WHERE rs.user_id = ? AND rs.workspace_id = ? AND b.workspace_id = ?"""
+    params: list[object] = [user_id, workspace_id, workspace_id]
     if wrong:
-        query += " AND EXISTS (SELECT 1 FROM answer_events ae WHERE ae.question_id=q.id AND ae.is_correct=0)"
+        query += " AND EXISTS (SELECT 1 FROM answer_events ae WHERE ae.question_id=q.id AND ae.user_id=? AND ae.workspace_id=? AND ae.is_correct=0)"
+        params.extend([user_id, workspace_id])
     if due:
         query += " AND (rs.due_at IS NULL OR rs.due_at <= ?)"
         params.append(utc_now())

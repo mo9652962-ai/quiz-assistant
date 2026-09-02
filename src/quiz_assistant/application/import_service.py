@@ -11,7 +11,11 @@ from quiz_assistant.schemas.question import question_from_payload
 
 
 def import_questions(
-    source: str | Path, db_path: str | Path, *, dry_run: bool = False
+    source: str | Path,
+    db_path: str | Path,
+    *,
+    dry_run: bool = False,
+    workspace_id: str = "local-default",
 ) -> ImportReport:
     initialize(db_path)
     report = ImportReport(source=str(source), dry_run=dry_run)
@@ -24,11 +28,11 @@ def import_questions(
                 report.total += 1
                 try:
                     question = question_from_payload(raw)
-                    if question_exists(db, question.id):
+                    if question_exists(db, question.id, workspace_id):
                         report.skipped_duplicate += 1
                         continue
                     if not dry_run:
-                        insert_question(db, question, str(source))
+                        insert_question(db, question, str(source), workspace_id)
                     report.imported += 1
                 except (
                     TypeError,

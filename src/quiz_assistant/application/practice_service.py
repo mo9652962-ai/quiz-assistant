@@ -14,11 +14,18 @@ from quiz_assistant.infrastructure.repositories import (
 
 
 def start_practice(
-    db_path: str | Path, *, bank: str | None = None, tag: str | None = None, count: int = 10
+    db_path: str | Path,
+    *,
+    bank: str | None = None,
+    tag: str | None = None,
+    count: int = 10,
+    workspace_id: str | None = None,
 ) -> list:
     initialize(db_path)
     with connect(db_path) as db:
-        return list_questions(db, bank=bank, tag=tag)[: max(0, count)]
+        return list_questions(
+            db, bank=bank, tag=tag, workspace_id=workspace_id
+        )[: max(0, count)]
 
 
 def submit_answer(
@@ -30,21 +37,35 @@ def submit_answer(
     elapsed_ms: int | None = None,
     method: str | None = "practice",
     confidence: float | None = None,
+    user_id: str = "local-owner",
+    workspace_id: str = "local-default",
 ) -> tuple[bool, str]:
     initialize(db_path)
     with connect(db_path) as db:
-        question = get_question(db, question_id)
+        question = get_question(db, question_id, workspace_id)
         if question is None:
             raise ValueError(f"question not found: {question_id}")
         session_id = session_id or create_session(
-            db, "practice", json.dumps({"question_id": question_id})
+            db,
+            "practice",
+            json.dumps({"question_id": question_id}),
+            user_id,
+            workspace_id,
         )
         correct = record_answer(
-            db, session_id, question, user_answer, method, confidence, elapsed_ms
+            db,
+            session_id,
+            question,
+            user_answer,
+            method,
+            confidence,
+            elapsed_ms,
+            user_id,
+            workspace_id,
         )
         previous_row = db.execute(
-            "SELECT due_at, interval_days, ease, repetitions, lapses FROM review_state WHERE question_id = ?",
-            (question_id,),
+            "SELECT due_at, interval_days, ease, repetitions, lapses FROM review_state WHERE question_id = ? AND user_id = ? AND workspace_id = ?",
+            (question_id, user_id, workspace_id),
         ).fetchone()
         previous = (
             ScheduleState(
@@ -59,8 +80,10 @@ def submit_answer(
         )
         next_state = schedule_review(previous, 5 if correct else 1)
         db.execute(
-            "INSERT INTO review_state(question_id, due_at, interval_days, ease, repetitions, lapses, scheduler) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(question_id) DO UPDATE SET due_at=excluded.due_at, interval_days=excluded.interval_days, ease=excluded.ease, repetitions=excluded.repetitions, lapses=excluded.lapses, scheduler=excluded.scheduler",
+            "INSERT INTO review_state(user_id, workspace_id, question_id, due_at, interval_days, ease, repetitions, lapses, scheduler) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, question_id) DO UPDATE SET workspace_id=excluded.workspace_id, due_at=excluded.due_at, interval_days=excluded.interval_days, ease=excluded.ease, repetitions=excluded.repetitions, lapses=excluded.lapses, scheduler=excluded.scheduler",
             (
+                user_id,
+                workspace_id,
                 question_id,
                 next_state.due_at.isoformat(),
                 next_state.interval_days,

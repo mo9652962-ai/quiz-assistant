@@ -6,6 +6,33 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class MembershipResponse(BaseModel):
+    workspace_id: str
+    workspace_name: str
+    role: str
+
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    global_role: str
+    workspace_id: str
+    workspace_name: str
+    workspace_role: str
+    memberships: list[MembershipResponse]
+
+
+class LoginResponse(BaseModel):
+    user: UserResponse
+
+
 class PublicOption(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -162,4 +189,3 @@ class BackupResponse(BaseModel):
     schema_version: int
     sha256: str | None = None
     verified: bool
-
