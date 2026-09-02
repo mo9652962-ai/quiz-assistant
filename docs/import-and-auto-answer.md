@@ -32,7 +32,7 @@ Python 依赖和 Windows OCR 引擎需要分别安装：
 python -m pip install -e ".[ocr]"
 ```
 
-同时安装 [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)，并将 `tesseract.exe` 所在目录加入当前用户的 `PATH`，然后重新打开终端或重启服务。没有 Tesseract 时，接口会返回明确的 503，不会静默猜答案。
+同时安装 [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)。项目会自动探测常见的 Windows 安装路径 `C:\Program Files\Tesseract-OCR\tesseract.exe`；如果安装在其它目录，请将其加入当前用户的 `PATH`，或设置 `TESSERACT_CMD` 为 `tesseract.exe` 的完整路径，然后重新启动服务。没有 Tesseract 时，接口会返回明确的 503，不会静默猜答案。
 
 批量接口示例：
 
@@ -41,6 +41,12 @@ curl.exe -H "X-Quiz-Session: local-session" `
   -F "files=@screen-1.png" `
   -F "files=@screen-2.jpg" `
   http://127.0.0.1:8765/api/ocr/recognize
+```
+
+本地服务默认每次启动都会生成随机 session。若要让命令行、前端和浏览器辅助模式共用固定本地 session，请在启动服务前设置一个仅自己知道的随机值，并将下面示例中的 `local-session` 换成该值：
+
+```powershell
+$env:QUIZ_LOCAL_SESSION_TOKEN = "replace-with-a-long-random-local-token"
 ```
 
 返回内容包含每个文件的 OCR 原文、题干、选项、结构状态和置信度。只有当 OCR 结构为 `high_confidence`，并且题干/选项同时命中本地题库的 `high_confidence` 匹配时，题目才会标记 `fill_allowed: true` 并返回答案键；OCR 低置信度、结构不完整或题库匹配不确定时只返回候选/问题，不会猜测或填入。图片仍应由用户复核，尤其要检查 `I/l`、`O/0`、标点和多选题选项。

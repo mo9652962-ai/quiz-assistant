@@ -34,3 +34,14 @@ def test_configured_server_accepts_postgres_target_for_database_abstraction(monk
     app = create_configured_app()
 
     assert app.state.db_target == "postgresql://quiz@localhost/quiz"
+
+
+def test_local_server_accepts_explicit_session_for_local_clients(monkeypatch, tmp_path):
+    monkeypatch.delenv("QUIZ_REMOTE_ENABLED", raising=False)
+    monkeypatch.setenv("QUIZ_DB_PATH", str(tmp_path / "quiz.db"))
+    monkeypatch.setenv("QUIZ_LOCAL_SESSION_TOKEN", "local-smoke-session")
+
+    app = create_configured_app()
+
+    assert app.state.auth_mode == "local"
+    assert app.state.session_token == "local-smoke-session"

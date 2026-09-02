@@ -13,6 +13,7 @@ def _env_bool(name: str, default: str = "false") -> bool:
 @dataclass(frozen=True)
 class Settings:
     db_path: Path = Path("data/quiz.db")
+    local_session_token: str | None = None
     remote_enabled: bool = False
     remote_read_only: bool = False
     remote_host: str = "127.0.0.1"
@@ -36,6 +37,7 @@ class Settings:
     def from_env(cls, db_path: str | Path | None = None) -> Settings:
         return cls(
             db_path=Path(db_path or os.getenv("QUIZ_DB_PATH", "data/quiz.db")),
+            local_session_token=os.getenv("QUIZ_LOCAL_SESSION_TOKEN") or None,
             remote_enabled=_env_bool("QUIZ_REMOTE_ENABLED"),
             remote_read_only=_env_bool("QUIZ_REMOTE_READ_ONLY"),
             remote_host=os.getenv("QUIZ_REMOTE_HOST", "127.0.0.1").strip(),

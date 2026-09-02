@@ -20,6 +20,7 @@ def create_configured_app():
     return create_app(
         db_path=settings.db_path,
         database_url=database_url,
+        session_token=settings.local_session_token,
         ai_enabled=settings.ai_enabled,
         auth_mode="accounts" if settings.remote_enabled else "local",
         secure_cookies=settings.remote_enabled,

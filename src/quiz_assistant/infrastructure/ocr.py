@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from io import BytesIO
@@ -113,6 +115,7 @@ def recognize_image(
             "OCR requires the optional 'ocr' dependency: Pillow and pytesseract"
         ) from exc
     try:
+        _configure_tesseract(pytesseract)
         with Image.open(BytesIO(data)) as image:
             image.verify()
         with Image.open(BytesIO(data)) as image:
@@ -122,6 +125,21 @@ def recognize_image(
     except Exception as exc:
         raise OCRInputError("image could not be decoded or recognized") from exc
     return parse_ocr_text(text)
+
+
+def _configure_tesseract(pytesseract_module) -> None:
+    """Use an explicit or common Windows install when Tesseract is not on PATH."""
+    if shutil.which("tesseract"):
+        return
+    candidates = [
+        os.environ.get("TESSERACT_CMD", ""),
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file():
+            pytesseract_module.pytesseract.tesseract_cmd = candidate
+            return
 
 
 def _split_options(value: str) -> tuple[str, list[OCROption]]:
