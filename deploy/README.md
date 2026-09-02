@@ -70,6 +70,22 @@ $env:PYTHONPATH = "src;work/phase-c-deps"
 python -m pytest tests/deployment/test_remote_smoke.py -q
 ```
 
+如果已经拿到专用 staging PostgreSQL 连接，可使用受保护的脚本执行真实 migration；需要显式
+传入 `-ConfirmStagingWrite`，避免把迁移误指向生产库。连接串只从环境变量读取，不会作为命令
+行参数打印：
+
+```powershell
+$env:QUIZ_DATABASE_URL = "postgresql://<staging-user>:<password>@<staging-host>:5432/<database>"
+.\scripts\run_postgres_staging_smoke.ps1 `
+  -ConfirmStagingWrite `
+  -ImportSnapshot `
+  -SnapshotPath .\work\migration.snapshot.json
+```
+
+未设置连接串、连接串不是 PostgreSQL、未显式确认写入或快照文件不存在时，脚本会在连接数据库
+前停止。它只执行 staging schema migration 和可选的快照导入，不会打开远程 API 写入、备份恢复
+或 workspace AI provider。
+
 不要把 SQLite 文件放到网络共享盘，不要让客户端直连数据库文件，也不要用已知的
 `local-owner/local-owner` 凭据作为公网账户。真正远程上线前还需要完成首个远程 owner
 创建/轮换、CSRF、速率限制、未知 Host 拒绝和日志/备份演练；本机没有可用 staging 实例时，

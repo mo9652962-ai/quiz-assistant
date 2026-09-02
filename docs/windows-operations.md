@@ -27,7 +27,15 @@ Pop-Location
 .\packaging\verify-release.ps1 -ReleaseDir .\artifacts\releases\QuizAssistant-0.1.0-windows-x64
 ```
 
-发布脚本不会覆盖已有目录；如果目标已存在，应显式选择新的 `-OutputDir` 或由维护者按既定保留策略处理。校验脚本会检查文件是否缺失、是否多出未登记文件、字节数和 SHA-256 是否一致。清单用于传输和回滚核验，不等同于代码签名；当前包仍需在具备组织证书后单独执行 Windows Authenticode 签名。
+发布脚本不会覆盖已有目录；如果目标已存在，应显式选择新的 `-OutputDir` 或由维护者按既定保留策略处理。校验脚本会检查文件是否缺失、是否多出未登记文件、字节数和 SHA-256 是否一致。清单用于传输和回滚核验，不等同于代码签名。
+
+具备组织证书后，可在生成发布目录时对包内 `.exe`/`.dll` 一并执行 Authenticode 签名；证书必须已经安装在当前用户证书存储：
+
+```powershell
+.\packaging\release.ps1 -CertificateThumbprint "<thumbprint>" -TimestampServer "https://<approved-timestamp-server>"
+```
+
+脚本会把签名状态写入清单，并在任一目标签名结果不是 `Valid` 时停止。当前机器未配置组织签名证书，因此本次发布目录标记为未签名；不能把 SHA-256 清单当作 Authenticode 签名的替代品。
 
 ## 启动和数据目录
 

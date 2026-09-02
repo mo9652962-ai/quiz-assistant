@@ -24,6 +24,8 @@ def test_windows_packaging_is_onedir_and_keeps_data_outside_install_dir():
     assert "onedir" in build.lower()
     assert "LOCALAPPDATA" in run
     assert "QUIZ_DB_PATH" in run
+    assert "_internal\\frontend\\dist" in run
+    assert "Bundled frontend/dist/index.html not found" in run
     assert "127.0.0.1" in run
     assert "Remove-Item" not in run
 
@@ -47,6 +49,8 @@ def test_windows_release_scripts_create_and_verify_hash_manifest():
     assert "release-manifest.json" in release
     assert "ConvertTo-Json" in release
     assert "quiz-assistant.exe" in release
+    assert "Set-AuthenticodeSignature" in release
+    assert "CertificateThumbprint" in release
     assert "Get-FileHash" in verify
     assert "ConvertFrom-Json" in verify
     assert "release-manifest.json" in verify
@@ -54,6 +58,19 @@ def test_windows_release_scripts_create_and_verify_hash_manifest():
     assert "verify-release.ps1" in operations
     assert "Remove-Item" not in release
     assert "Remove-Item" not in verify
+
+
+def test_postgres_staging_smoke_requires_database_url_and_explicit_write_acknowledgement():
+    smoke = (ROOT / "scripts" / "run_postgres_staging_smoke.ps1").read_text(encoding="utf-8")
+
+    assert "QUIZ_DATABASE_URL" in smoke
+    assert '"postgres", "postgresql"' in smoke
+    assert "ConfirmStagingWrite" in smoke
+    assert "postgres-migrate" in smoke
+    assert "postgres-import-snapshot" in smoke
+    assert "--locked" in smoke
+    assert "PostgreSQL staging" in smoke
+    assert "$env:QUIZ_DATABASE_URL" not in smoke.split("Write-Output")[-1]
 
 
 def test_configured_frontend_serves_spa_routes_without_touching_api_routes(tmp_path, monkeypatch):

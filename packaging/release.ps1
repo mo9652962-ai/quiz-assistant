@@ -2,7 +2,9 @@
 param(
     [string]$PackageDir = (Join-Path $PSScriptRoot "..\artifacts\onedir\quiz-assistant"),
     [string]$OutputDir = (Join-Path $PSScriptRoot "..\artifacts\releases"),
-    [string]$Version = ""
+    [string]$Version = "",
+    [string]$CertificateThumbprint = "",
+    [string]$TimestampServer = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +42,32 @@ if (Test-Path -LiteralPath $releaseRoot) {
 New-Item -ItemType Directory -Path $releaseRoot | Out-Null
 Get-ChildItem -LiteralPath $packageRoot -Force | Copy-Item -Destination $releaseRoot -Recurse -Force
 
+$signedBinaries = @()
+if (-not [string]::IsNullOrWhiteSpace($TimestampServer) -and
+    [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+    throw "-TimestampServer requires -CertificateThumbprint"
+}
+if (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+    $thumbprint = ($CertificateThumbprint -replace '\s', '').ToUpperInvariant()
+    $certificate = Get-ChildItem -LiteralPath ("Cert:\CurrentUser\My\{0}" -f $thumbprint) -ErrorAction Stop
+    $signTargets = @(Get-ChildItem -LiteralPath $releaseRoot -Recurse -File |
+        Where-Object { $_.Extension.ToLowerInvariant() -in @('.exe', '.dll') })
+    foreach ($binary in $signTargets) {
+        $signatureParameters = @{
+            FilePath    = $binary.FullName
+            Certificate = $certificate
+        }
+        if (-not [string]::IsNullOrWhiteSpace($TimestampServer)) {
+            $signatureParameters.TimestampServer = $TimestampServer
+        }
+        $signature = Set-AuthenticodeSignature @signatureParameters
+        if ($signature.Status -ne 'Valid') {
+            throw "Authenticode signing failed for $($binary.FullName): $($signature.Status)"
+        }
+        $signedBinaries += $binary.FullName.Substring($releaseRoot.Length).TrimStart('\').Replace('\', '/')
+    }
+}
+
 $manifestEntries = @(
     Get-ChildItem -LiteralPath $releaseRoot -Recurse -File |
         Sort-Object -Property FullName |
@@ -58,6 +86,8 @@ $manifest = [pscustomobject]@{
     version       = $Version
     platform      = "windows-x64"
     manifest_file = "release-manifest.json"
+    signed        = ($signedBinaries.Count -gt 0)
+    signed_files  = $signedBinaries
     created_at    = (Get-Date).ToUniversalTime().ToString("o")
     files         = $manifestEntries
 }
