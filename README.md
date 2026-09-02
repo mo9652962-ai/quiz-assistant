@@ -37,6 +37,10 @@ python -m quiz_assistant backup create
 
 完整格式、dry-run、Web/API 导入方式和 JSON/JSONL/CSV 示例见 [`docs/import-and-auto-answer.md`](docs/import-and-auto-answer.md)。可直接复制 [`examples/questions.json`](examples/questions.json) 或 [`examples/questions.csv`](examples/questions.csv) 作为模板。
 
+## 远程只读试运行
+
+Phase C 已提供服务端远程只读门禁和 Caddy HTTPS 示例。启动边界、环境变量和验证步骤见 [`deploy/README.md`](deploy/README.md)、[`.env.remote.example`](.env.remote.example) 和 [`deploy/Caddyfile.example`](deploy/Caddyfile.example)。PostgreSQL 连接器、远程写入、导入、备份恢复和外部 AI 仍保持关闭，待后续阶段完成迁移与安全测试后再开放。
+
 ## 开发与验证
 
 ```powershell

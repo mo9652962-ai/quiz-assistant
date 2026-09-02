@@ -24,6 +24,32 @@ def test_initialize_bootstraps_local_default_workspace_and_owner(tmp_path: Path)
     assert tuple(membership) == ("local-default", "local-owner", "owner")
 
 
+def test_remote_owner_bootstrap_is_idempotent_and_does_not_touch_local_owner(tmp_path: Path):
+    from quiz_assistant.application.account_service import ensure_remote_owner
+    from quiz_assistant.infrastructure.db import connect, initialize
+
+    db_path = tmp_path / "quiz.db"
+    initialize(db_path)
+    ensure_remote_owner(db_path, "remote-owner", "change-me-now")
+    ensure_remote_owner(db_path, "remote-owner", "ignored-on-second-run")
+
+    with connect(db_path) as db:
+        owner = db.execute(
+            "SELECT username, global_role FROM users WHERE username = 'remote-owner'"
+        ).fetchone()
+        membership = db.execute(
+            """SELECT workspace_id, role FROM workspace_memberships
+               WHERE user_id = (SELECT id FROM users WHERE username = 'remote-owner')"""
+        ).fetchone()
+        local = db.execute(
+            "SELECT username FROM users WHERE username = 'local-owner'"
+        ).fetchone()
+
+    assert tuple(owner) == ("remote-owner", "owner")
+    assert tuple(membership) == ("local-default", "owner")
+    assert local[0] == "local-owner"
+
+
 def test_existing_question_banks_are_assigned_to_local_workspace(tmp_path: Path):
     db_path = tmp_path / "quiz.db"
     initialize(db_path)

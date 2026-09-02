@@ -142,3 +142,36 @@ def create_user(db_path, user_id: str, username: str, password: str, global_role
                VALUES (?, ?, ?, 'active', ?, ?)""",
             (user_id, username, hash_password(password), global_role, utc_now()),
         )
+
+
+def ensure_remote_owner(db_path, username: str, password: str) -> None:
+    """Idempotently provision the explicitly configured remote owner.
+
+    Existing users are never overwritten. The owner is attached to the first
+    workspace created by the local-compatible schema (``local-default``).
+    """
+    if not username or not password or username == "local-owner":
+        raise ValueError("remote owner must be explicit and must not be local-owner")
+    initialize(db_path)
+    with connect(db_path) as db:
+        user = db.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+        if user:
+            user_id = user[0]
+        else:
+            user_id = str(uuid.uuid4())
+            db.execute(
+                """INSERT INTO users(id, username, password_hash, status, global_role, created_at)
+                   VALUES (?, ?, ?, 'active', 'owner', ?)""",
+                (user_id, username, hash_password(password), utc_now()),
+            )
+        workspace = db.execute(
+            "SELECT id FROM workspaces ORDER BY created_at, id LIMIT 1"
+        ).fetchone()
+        if not workspace:
+            raise ValueError("remote owner cannot be provisioned without a workspace")
+        db.execute(
+            """INSERT INTO workspace_memberships(workspace_id, user_id, role, created_at)
+               VALUES (?, ?, 'owner', ?)
+               ON CONFLICT(workspace_id, user_id) DO UPDATE SET role = 'owner'""",
+            (workspace[0], user_id, utc_now()),
+        )

@@ -22,6 +22,7 @@ from fastapi import (
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from quiz_assistant.api.schemas import (
     AlternativeMatch,
@@ -51,6 +52,7 @@ from quiz_assistant.application.account_service import (
     Actor,
     actor_from_session,
     authenticate_user,
+    ensure_remote_owner,
     memberships,
     revoke_session,
 )
@@ -64,6 +66,10 @@ from quiz_assistant.application.query_service import query_questions
 from quiz_assistant.application.review_service import review_queue
 from quiz_assistant.infrastructure.db import SCHEMA_VERSION, connect, initialize
 from quiz_assistant.infrastructure.repositories import create_session
+
+
+class RemoteReadOnlyError(Exception):
+    """Raised when a Phase C remote pilot receives a data-mutating request."""
 
 
 def _public_question(question, *, include_explanation: bool = False) -> PublicQuestion:
@@ -95,12 +101,22 @@ def create_app(
     ai_enabled: bool = False,
     auth_mode: str = "local",
     secure_cookies: bool = False,
+    remote_read_only: bool = False,
+    remote_owner_username: str | None = None,
+    remote_owner_password: str | None = None,
+    allowed_hosts: list[str] | None = None,
 ) -> FastAPI:
     db_path = Path(db_path)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         initialize(app.state.db_path)
+        if app.state.remote_owner_username and app.state.remote_owner_password:
+            ensure_remote_owner(
+                app.state.db_path,
+                app.state.remote_owner_username,
+                app.state.remote_owner_password,
+            )
         yield
 
     app = FastAPI(title="Quiz Assistant API", version="0.1.0", lifespan=lifespan)
@@ -111,6 +127,9 @@ def create_app(
         raise ValueError("auth_mode must be 'local' or 'accounts'")
     app.state.auth_mode = auth_mode
     app.state.secure_cookies = secure_cookies
+    app.state.remote_read_only = remote_read_only
+    app.state.remote_owner_username = remote_owner_username
+    app.state.remote_owner_password = remote_owner_password
     app.state.backup_root = db_path.parent / "backups"
 
     origins = allow_origins or []
@@ -122,6 +141,8 @@ def create_app(
             allow_methods=["GET", "POST"],
             allow_headers=["Content-Type", "X-Quiz-Session"],
         )
+    if allowed_hosts:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request, exc):
@@ -131,6 +152,16 @@ def create_app(
                 "code": "validation_error",
                 "message": "request validation failed",
                 "details": exc.errors(),
+            },
+        )
+
+    @app.exception_handler(RemoteReadOnlyError)
+    async def remote_read_only_handler(request, exc):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "code": "remote_read_only",
+                "message": "remote read-only pilot does not allow data writes",
             },
         )
 
@@ -237,6 +268,7 @@ def create_app(
         payload: PracticeSessionRequest, token: str | None = Depends(_session_dependency)
     ) -> PracticeSessionResponse:
         actor = _check_session(app, token)
+        _require_writable(app)
         questions = start_practice(
             app.state.db_path,
             bank=payload.bank,
@@ -273,6 +305,7 @@ def create_app(
         token: str | None = Depends(_session_dependency),
     ) -> AnswerResponse:
         actor = _check_session(app, token)
+        _require_writable(app)
         initialize(app.state.db_path)
         with connect(app.state.db_path) as db:
             session = db.execute(
@@ -370,6 +403,7 @@ def create_app(
         token: str | None = Depends(_session_dependency),
     ) -> ImportResponse:
         actor = _check_session(app, token)
+        _require_writable(app)
         raw = await file.read()
         if len(raw) > 20 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="upload exceeds 20 MiB limit")
@@ -409,6 +443,7 @@ def create_app(
         payload: BackupRequest, token: str | None = Depends(_session_dependency)
     ) -> BackupResponse:
         actor = _check_session(app, token)
+        _require_writable(app)
         if actor.workspace_role != "owner" and actor.global_role != "owner":
             raise HTTPException(status_code=403, detail="workspace owner permission required")
         if payload.action == "create":
@@ -442,6 +477,11 @@ def create_app(
         )
 
     return app
+
+
+def _require_writable(app: FastAPI) -> None:
+    if app.state.remote_read_only:
+        raise RemoteReadOnlyError
 
 
 def _check_session(app: FastAPI, token: str | None) -> Actor:
