@@ -65,7 +65,7 @@ CREATE TABLE options (
     option_key TEXT NOT NULL,
     text TEXT NOT NULL,
     normalized_text TEXT NOT NULL,
-    is_correct BOOLEAN NOT NULL,
+    is_correct INTEGER NOT NULL,
     UNIQUE (question_id, option_key)
 );
 
@@ -96,7 +96,7 @@ CREATE TABLE answer_events (
     question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
     question_version INTEGER NOT NULL,
     user_answer TEXT NOT NULL,
-    is_correct BOOLEAN NOT NULL,
+    is_correct INTEGER NOT NULL,
     match_method TEXT,
     confidence DOUBLE PRECISION,
     elapsed_ms INTEGER,

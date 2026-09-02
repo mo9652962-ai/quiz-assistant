@@ -1,5 +1,3 @@
-import pytest
-
 from quiz_assistant.server import create_configured_app
 
 
@@ -28,10 +26,11 @@ def test_configured_server_enables_accounts_and_read_only_pilot(monkeypatch, tmp
     assert any(m.cls.__name__ == "TrustedHostMiddleware" for m in app.user_middleware)
 
 
-def test_configured_server_refuses_unimplemented_postgres_adapter(monkeypatch):
+def test_configured_server_accepts_postgres_target_for_database_abstraction(monkeypatch):
     _set_valid_remote_env(monkeypatch)
     monkeypatch.setenv("QUIZ_REMOTE_ALLOW_SQLITE", "false")
     monkeypatch.setenv("QUIZ_DATABASE_URL", "postgresql://quiz@localhost/quiz")
 
-    with pytest.raises(RuntimeError, match="PostgreSQL.*adapter"):
-        create_configured_app()
+    app = create_configured_app()
+
+    assert app.state.db_target == "postgresql://quiz@localhost/quiz"

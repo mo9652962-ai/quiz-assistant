@@ -96,6 +96,7 @@ def _session_dependency(
 def create_app(
     db_path: str | Path = "data/quiz.db",
     *,
+    database_url: str | None = None,
     session_token: str | None = None,
     allow_origins: list[str] | None = None,
     ai_enabled: bool = False,
@@ -107,13 +108,14 @@ def create_app(
     allowed_hosts: list[str] | None = None,
 ) -> FastAPI:
     db_path = Path(db_path)
+    db_target = database_url or db_path
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        initialize(app.state.db_path)
+        initialize(app.state.db_target)
         if app.state.remote_owner_username and app.state.remote_owner_password:
             ensure_remote_owner(
-                app.state.db_path,
+                app.state.db_target,
                 app.state.remote_owner_username,
                 app.state.remote_owner_password,
             )
@@ -121,6 +123,7 @@ def create_app(
 
     app = FastAPI(title="Quiz Assistant API", version="0.1.0", lifespan=lifespan)
     app.state.db_path = db_path
+    app.state.db_target = db_target
     app.state.session_token = session_token or secrets.token_urlsafe(32)
     app.state.ai_enabled = ai_enabled
     if auth_mode not in {"local", "accounts"}:
@@ -130,7 +133,7 @@ def create_app(
     app.state.remote_read_only = remote_read_only
     app.state.remote_owner_username = remote_owner_username
     app.state.remote_owner_password = remote_owner_password
-    app.state.backup_root = db_path.parent / "backups"
+    app.state.backup_root = db_path.parent / "backups" if database_url is None else None
 
     origins = allow_origins or []
     if origins:
@@ -167,17 +170,17 @@ def create_app(
 
     @app.get("/api/health", response_model=HealthResponse)
     def health() -> HealthResponse:
-        initialize(app.state.db_path)
+        initialize(app.state.db_target)
         return HealthResponse(
             status="ok", schema_version=SCHEMA_VERSION, ai_enabled=app.state.ai_enabled
         )
 
     @app.post("/api/auth/login", response_model=LoginResponse)
     def login(payload: LoginRequest, response: Response) -> LoginResponse:
-        user = authenticate_user(app.state.db_path, payload.username, payload.password)
+        user = authenticate_user(app.state.db_target, payload.username, payload.password)
         if not user:
             raise HTTPException(status_code=401, detail="invalid username or password")
-        token = create_account_session(app.state.db_path, user["id"])
+        token = create_account_session(app.state.db_target, user["id"])
         response.set_cookie(
             "quiz_session",
             token,
@@ -186,19 +189,19 @@ def create_app(
             samesite="lax",
             max_age=7 * 24 * 60 * 60,
         )
-        actor = actor_from_session(app.state.db_path, token)
+        actor = actor_from_session(app.state.db_target, token)
         if actor is None:
             raise HTTPException(status_code=500, detail="session was not persisted")
-        return LoginResponse(user=_user_response(app.state.db_path, actor))
+        return LoginResponse(user=_user_response(app.state.db_target, actor))
 
     @app.get("/api/auth/me", response_model=UserResponse)
     def me(token: str | None = Depends(_session_dependency)) -> UserResponse:
         actor = _check_session(app, token)
-        return _user_response(app.state.db_path, actor)
+        return _user_response(app.state.db_target, actor)
 
     @app.post("/api/auth/logout", status_code=204)
     def logout(response: Response, token: str | None = Depends(_session_dependency)) -> Response:
-        revoke_session(app.state.db_path, token)
+        revoke_session(app.state.db_target, token)
         response.delete_cookie("quiz_session")
         response.status_code = 204
         return response
@@ -206,8 +209,8 @@ def create_app(
     @app.get("/api/banks", response_model=BanksResponse)
     def banks(token: str | None = Depends(_session_dependency)) -> BanksResponse:
         actor = _check_session(app, token)
-        initialize(app.state.db_path)
-        with connect(app.state.db_path) as db:
+        initialize(app.state.db_target)
+        with connect(app.state.db_target) as db:
             rows = db.execute(
                 """
                 SELECT b.name, b.version,
@@ -237,7 +240,7 @@ def create_app(
     ) -> MatchResponse:
         actor = _check_session(app, token)
         result = query_questions(
-            app.state.db_path,
+            app.state.db_target,
             payload.text,
             payload.options,
             payload.top_k,
@@ -270,14 +273,14 @@ def create_app(
         actor = _check_session(app, token)
         _require_writable(app)
         questions = start_practice(
-            app.state.db_path,
+            app.state.db_target,
             bank=payload.bank,
             tag=payload.tag,
             count=payload.count,
             workspace_id=actor.workspace_id,
         )
-        initialize(app.state.db_path)
-        with connect(app.state.db_path) as db:
+        initialize(app.state.db_target)
+        with connect(app.state.db_target) as db:
             session_id = create_session(
                 db,
                 payload.mode,
@@ -306,8 +309,8 @@ def create_app(
     ) -> AnswerResponse:
         actor = _check_session(app, token)
         _require_writable(app)
-        initialize(app.state.db_path)
-        with connect(app.state.db_path) as db:
+        initialize(app.state.db_target)
+        with connect(app.state.db_target) as db:
             session = db.execute(
                 "SELECT user_id, workspace_id FROM practice_sessions WHERE id = ?", (session_id,)
             ).fetchone()
@@ -316,7 +319,7 @@ def create_app(
             if session["user_id"] != actor.user_id or session["workspace_id"] != actor.workspace_id:
                 raise HTTPException(status_code=404, detail="practice session not found")
         correct, _ = submit_answer(
-            app.state.db_path,
+            app.state.db_target,
             payload.question_id,
             payload.answer,
             session_id=session_id,
@@ -324,7 +327,7 @@ def create_app(
             user_id=actor.user_id,
             workspace_id=actor.workspace_id,
         )
-        with connect(app.state.db_path) as db:
+        with connect(app.state.db_target) as db:
             event = db.execute(
                 "SELECT id FROM answer_events WHERE session_id = ? AND question_id = ? ORDER BY id DESC LIMIT 1",
                 (session_id, payload.question_id),
@@ -342,7 +345,7 @@ def create_app(
         correct_keys = None
         explanation = None
         if revealed:
-            with connect(app.state.db_path) as db:
+            with connect(app.state.db_target) as db:
                 stored = db.execute(
                     "SELECT option_key FROM options WHERE question_id = ? AND is_correct = 1 ORDER BY id",
                     (payload.question_id,),
@@ -374,7 +377,7 @@ def create_app(
     ) -> ReviewsResponse:
         actor = _check_session(app, token)
         items = review_queue(
-            app.state.db_path,
+            app.state.db_target,
             wrong=wrong,
             due=due,
             limit=limit,
@@ -421,7 +424,7 @@ def create_app(
                 temporary = Path(handle.name)
             report = import_questions(
                 temporary,
-                app.state.db_path,
+                app.state.db_target,
                 dry_run=dry_run,
                 workspace_id=actor.workspace_id,
             )
@@ -447,7 +450,7 @@ def create_app(
         if actor.workspace_role != "owner" and actor.global_role != "owner":
             raise HTTPException(status_code=403, detail="workspace owner permission required")
         if payload.action == "create":
-            target = create_backup(app.state.db_path, app.state.backup_root)
+            target = create_backup(app.state.db_target, app.state.backup_root)
             manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
             db_name = app.state.db_path.name
             return BackupResponse(
@@ -463,7 +466,7 @@ def create_app(
         if app.state.backup_root.resolve() not in backup_dir.parents:
             raise HTTPException(status_code=400, detail="invalid backup id")
         try:
-            restore_backup(backup_dir, app.state.db_path, force=payload.force)
+            restore_backup(backup_dir, app.state.db_target, force=payload.force)
         except FileExistsError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except (OSError, ValueError, json.JSONDecodeError) as exc:
@@ -472,7 +475,7 @@ def create_app(
             action="restore",
             backup_id=payload.backup_id,
             schema_version=SCHEMA_VERSION,
-            sha256=sha256(app.state.db_path),
+            sha256=sha256(app.state.db_target),
             verified=True,
         )
 
@@ -486,7 +489,7 @@ def _require_writable(app: FastAPI) -> None:
 
 def _check_session(app: FastAPI, token: str | None) -> Actor:
     if app.state.auth_mode == "accounts":
-        actor = actor_from_session(app.state.db_path, token)
+        actor = actor_from_session(app.state.db_target, token)
         if actor is None:
             raise HTTPException(status_code=401, detail="valid account session required")
         return actor

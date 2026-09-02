@@ -11,7 +11,10 @@ class FakeCursor:
     def execute(self, sql, params=None):
         self.connection.executed.append((sql, params))
         if sql.startswith("SELECT version FROM schema_migrations"):
-            self.rows = [(version,) for version in self.connection.applied]
+            self.rows = [
+                {"version": version} if self.connection.dict_rows else (version,)
+                for version in self.connection.applied
+            ]
         elif sql.startswith("INSERT INTO schema_migrations"):
             self.connection.applied.add(params[0])
         if self.connection.fail_on_migration and "CREATE TABLE workspaces" in sql:
@@ -25,12 +28,13 @@ class FakeCursor:
 
 
 class FakeConnection:
-    def __init__(self, fail_on_migration=False):
+    def __init__(self, fail_on_migration=False, dict_rows=False):
         self.applied = set()
         self.executed = []
         self.commits = 0
         self.rollbacks = 0
         self.fail_on_migration = fail_on_migration
+        self.dict_rows = dict_rows
 
     def cursor(self):
         return FakeCursor(self)
@@ -66,3 +70,12 @@ def test_postgres_migration_rolls_back_when_a_migration_fails():
     assert connection.commits == 0
     assert connection.rollbacks == 1
     assert connection.applied == set()
+
+
+def test_postgres_migration_accepts_dict_rows_from_psycopg_row_factory():
+    connection = FakeConnection(dict_rows=True)
+
+    apply_postgres_migrations(connection)
+    apply_postgres_migrations(connection)
+
+    assert connection.commits == 2

@@ -88,9 +88,8 @@ def insert_question(
             ),
         )
     for tag in question.tags:
-        tag_id = db.execute("INSERT OR IGNORE INTO tags(name) VALUES (?)", (tag,)).lastrowid
-        if tag_id is None:
-            tag_id = db.execute("SELECT id FROM tags WHERE name = ?", (tag,)).fetchone()[0]
+        db.execute("INSERT OR IGNORE INTO tags(name) VALUES (?)", (tag,))
+        tag_id = db.execute("SELECT id FROM tags WHERE name = ?", (tag,)).fetchone()[0]
         db.execute(
             "INSERT OR IGNORE INTO question_tags(question_id, tag_id) VALUES (?, ?)",
             (question.id, tag_id),

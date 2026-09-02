@@ -17,7 +17,11 @@ from quiz_assistant.application.query_service import query_questions
 from quiz_assistant.application.review_service import review_queue
 from quiz_assistant.config import Settings
 from quiz_assistant.infrastructure.db import connect, initialize
-from quiz_assistant.infrastructure.postgres import migrate_postgres_url
+from quiz_assistant.infrastructure.postgres import (
+    connect_postgres,
+    import_sqlite_snapshot_to_postgres,
+    migrate_postgres_url,
+)
 from quiz_assistant.infrastructure.repositories import create_session
 from quiz_assistant.infrastructure.sqlite_snapshot import (
     export_sqlite_snapshot,
@@ -108,6 +112,13 @@ def _parser() -> argparse.ArgumentParser:
     postgres = subs.add_parser("postgres-migrate", help="apply PostgreSQL schema migrations")
     postgres.add_argument("--database-url", default=None)
     postgres.add_argument("--migrations-dir", default=None)
+
+    postgres_import = subs.add_parser(
+        "postgres-import-snapshot", help="import a SQLite snapshot into PostgreSQL"
+    )
+    postgres_import.add_argument("--database-url", default=None)
+    postgres_import.add_argument("--source", required=True)
+    postgres_import.add_argument("--migrations-dir", default=None)
     return parser
 
 
@@ -186,6 +197,24 @@ def _legacy_main(argv: list[str]) -> int:
             raise SystemExit("postgres-migrate requires --database-url or QUIZ_DATABASE_URL")
         report = migrate_postgres_url(database_url, args.migrations_dir)
         print(f"postgres migrations applied: {', '.join(report.applied) or 'none'}")
+        return 0
+    if args.command == "postgres-import-snapshot":
+        database_url = args.database_url or Settings.from_env().remote_database_url
+        if not database_url:
+            raise SystemExit(
+                "postgres-import-snapshot requires --database-url or QUIZ_DATABASE_URL"
+            )
+        connection = connect_postgres(database_url)
+        try:
+            report = import_sqlite_snapshot_to_postgres(
+                connection, Path(args.source), args.migrations_dir
+            )
+        finally:
+            connection.close()
+        print(
+            f"postgres snapshot imported: {report.path.resolve()} "
+            f"(questions={report.question_count}, skipped={report.skipped})"
+        )
         return 0
     settings = _settings(args)
     if args.command == "init":
@@ -398,6 +427,28 @@ def postgres_migrate_command(
         _legacy_main(
             _args(
                 "postgres-migrate",
+                "--database-url",
+                database_url,
+                "--migrations-dir",
+                migrations_dir,
+            )
+        )
+    )
+
+
+@app.command("postgres-import-snapshot")
+def postgres_import_snapshot_command(
+    source: str = typer.Option(..., "--source"),
+    database_url: str | None = typer.Option(None, "--database-url"),
+    migrations_dir: str | None = typer.Option(None, "--migrations-dir"),
+) -> None:
+    """Import a validated SQLite migration snapshot into PostgreSQL."""
+    raise typer.Exit(
+        _legacy_main(
+            _args(
+                "postgres-import-snapshot",
+                "--source",
+                source,
                 "--database-url",
                 database_url,
                 "--migrations-dir",

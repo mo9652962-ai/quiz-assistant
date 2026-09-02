@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from quiz_assistant.infrastructure.passwords import hash_password
 
@@ -18,7 +19,15 @@ class ManagedConnection(sqlite3.Connection):
             self.close()
 
 
-def connect(path: str | Path) -> sqlite3.Connection:
+def is_postgres_target(target: str | Path) -> bool:
+    return urlsplit(str(target)).scheme in {"postgres", "postgresql"}
+
+
+def connect(path: str | Path):
+    if is_postgres_target(path):
+        from quiz_assistant.infrastructure.postgres import PostgresConnection, connect_postgres
+
+        return PostgresConnection(connect_postgres(str(path)))
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path, factory=ManagedConnection)
@@ -28,6 +37,9 @@ def connect(path: str | Path) -> sqlite3.Connection:
 
 
 def initialize(path: str | Path) -> None:
+    if is_postgres_target(path):
+        _initialize_postgres(str(path))
+        return
     with connect(path) as db:
         db.executescript(
             """
@@ -124,6 +136,32 @@ def initialize(path: str | Path) -> None:
             CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
             INSERT INTO schema_meta(key, value) VALUES ('version', '3') ON CONFLICT(key) DO UPDATE SET value=excluded.value;
             """
+        )
+
+
+def _initialize_postgres(database_url: str) -> None:
+    from quiz_assistant.infrastructure.postgres import apply_postgres_migrations, connect_postgres
+
+    raw_connection = connect_postgres(database_url)
+    try:
+        apply_postgres_migrations(raw_connection)
+    finally:
+        raw_connection.close()
+    now = "2026-09-02T00:00:00+00:00"
+    with connect(database_url) as db:
+        db.execute(
+            "INSERT OR IGNORE INTO workspaces(id, name, created_at) VALUES (?, ?, ?)",
+            ("local-default", "Local default", now),
+        )
+        db.execute(
+            """INSERT OR IGNORE INTO users(id, username, password_hash, status, global_role, created_at)
+               VALUES (?, ?, ?, 'active', 'owner', ?)""",
+            ("local-owner", "local-owner", hash_password("local-owner"), now),
+        )
+        db.execute(
+            """INSERT OR IGNORE INTO workspace_memberships(workspace_id, user_id, role, created_at)
+               VALUES (?, ?, 'owner', ?)""",
+            ("local-default", "local-owner", now),
         )
 
 

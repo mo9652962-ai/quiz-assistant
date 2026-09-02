@@ -16,15 +16,10 @@ def create_configured_app():
     settings = Settings.from_env()
     settings.validate_ai()
     settings.validate_remote()
-    if settings.remote_enabled and settings.remote_database_url:
-        scheme = urlsplit(settings.remote_database_url).scheme
-        if scheme in {"postgres", "postgresql"}:
-            raise RuntimeError(
-                "PostgreSQL is configured, but the Phase C adapter is not enabled yet; "
-                "use the explicit SQLite transition for the remote pilot"
-            )
+    database_url = settings.remote_database_url if settings.remote_enabled else None
     return create_app(
         db_path=settings.db_path,
+        database_url=database_url,
         ai_enabled=settings.ai_enabled,
         auth_mode="accounts" if settings.remote_enabled else "local",
         secure_cookies=settings.remote_enabled,

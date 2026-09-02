@@ -12,7 +12,7 @@ def test_typer_help_keeps_core_commands_visible():
     assert result.exit_code == 0
     for command in (
         "init", "import", "search", "answer", "practice", "review", "export", "backup",
-        "snapshot-export", "snapshot-import", "postgres-migrate",
+        "snapshot-export", "snapshot-import", "postgres-migrate", "postgres-import-snapshot",
     ):
         assert command in result.stdout
 

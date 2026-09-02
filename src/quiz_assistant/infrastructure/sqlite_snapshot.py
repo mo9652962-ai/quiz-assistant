@@ -104,6 +104,10 @@ def import_sqlite_snapshot(snapshot_path: str | Path, db_path: str | Path) -> Sn
     return SnapshotReport(db_path, table_counts, skipped)
 
 
+def load_sqlite_snapshot(snapshot_path: str | Path) -> dict:
+    return _read_snapshot(Path(snapshot_path))
+
+
 def _read_snapshot(path: Path) -> dict:
     if not path.is_file():
         raise ValueError("snapshot file does not exist")

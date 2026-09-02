@@ -1,8 +1,9 @@
 # Phase C remote read-only pilot
 
-本目录只描述受控的远程试运行入口。当前业务 API 仍以 SQLite 为后端；PostgreSQL
-schema、事务迁移 runner 和 SQLite 迁移快照工具已经交付，但应用 repository 尚未切换
-到 PostgreSQL，因此不能把 `QUIZ_DATABASE_URL=postgresql://...` 直接用于启动服务。
+本目录只描述受控的远程试运行入口。应用的数据访问入口已经支持以 PostgreSQL URL
+作为 database target：设置 `QUIZ_DATABASE_URL=postgresql://...` 后，FastAPI、账户/session、
+题库查询和 repository 会通过 PostgreSQL 适配层访问数据库。真实 staging migration/import
+仍需在部署环境执行并留存行数、隔离和回滚证据。
 
 ## 启动边界
 
@@ -40,11 +41,13 @@ FastAPI 必须只监听 `127.0.0.1:8765`，公开 HTTPS 入口交给 Caddy。远
 quiz snapshot-export --db data/quiz.db --out work/migration.snapshot.json
 ```
 
-目标数据库必须是新文件或只包含初始化 bootstrap 数据；导入是事务性的、幂等的，
-不会导入任何 session token/hash：
+目标数据库必须是新数据库或只包含初始化 bootstrap 数据；导入是事务性的、幂等的，
+不会导入任何 session token/hash。PostgreSQL 目标使用以下命令：
 
 ```powershell
-quiz snapshot-import --db data/remote-staging.db --source work/migration.snapshot.json
+quiz postgres-import-snapshot `
+  --database-url "$env:QUIZ_DATABASE_URL" `
+  --source work/migration.snapshot.json
 ```
 
 PostgreSQL schema migration 使用：
@@ -55,8 +58,10 @@ quiz postgres-migrate --database-url "$env:QUIZ_DATABASE_URL"
 ```
 
 迁移 runner 会创建 `schema_migrations`，按 `migrations/postgres/*.sql` 的数字前缀顺序
-执行，并在任意 migration 失败时 rollback。应用切换到 PostgreSQL 之前，必须在 staging
-完成数据行数、workspace 隔离、登录/session 撤销和恢复演练。
+执行，并在任意 migration 失败时 rollback。`postgres-import-snapshot` 会先确保 migration
+完成，再按外键依赖顺序导入快照、重置 serial sequence，并在失败时 rollback。应用启动时
+也会幂等执行 migration 和本地 bootstrap；切换到 PostgreSQL 前必须在 staging 完成数据行数、
+workspace 隔离、登录/session 撤销和恢复演练。
 
 本地部署 smoke test：
 
@@ -67,4 +72,5 @@ python -m pytest tests/deployment/test_remote_smoke.py -q
 
 不要把 SQLite 文件放到网络共享盘，不要让客户端直连数据库文件，也不要用已知的
 `local-owner/local-owner` 凭据作为公网账户。真正远程上线前还需要完成首个远程 owner
-创建/轮换、PostgreSQL 适配、CSRF、速率限制、未知 Host 拒绝和日志/备份演练。
+创建/轮换、CSRF、速率限制、未知 Host 拒绝和日志/备份演练；本机没有可用 staging 实例时，
+不得把本地模拟测试当作真实 migration/import 证据。
