@@ -2,7 +2,7 @@
 
 目标：在不破坏现有 CLI、domain/application service、SQLite 数据和 14 个测试的前提下，逐步交付 Web、合规边界和 Windows 发布能力。每一阶段遵循 **先写失败测试（RED）→最小实现（GREEN）→重构（REFACTOR）→回归与回滚演练**。
 
-当前进度：C14/C15 核心路径已实现并通过 21 个测试与 Ruff；C16 已加入 Vue 3/Vite 页面、统一 API client、独立端口代理和本机 Playwright smoke；C17 已加入 AI allowlist/脱敏基础门禁。完整多用户账户、C18 SQLite 在线备份与 PyInstaller 发布仍待实施。
+当前进度：C14/C15 核心路径已实现并通过 21 个测试与 Ruff；C16 已加入 Vue 3/Vite 页面、统一 API client、独立端口代理和本机 Playwright smoke；C17 已加入 AI allowlist/脱敏基础门禁；账户模型、远程 TLS 和用户隔离的独立设计已完成。完整多用户账户实现、C18 SQLite 在线备份与 PyInstaller 发布仍待实施。
 
 ## 阶段总览
 
@@ -100,7 +100,7 @@ Playwright 官方推荐 pytest plugin，并支持 Chromium/Firefox/WebKit 与隔
 
 ## C17 — 合规与安全
 
-输入：`docs/safety-boundary.md`、C15 session guard、C16 UI confirmation、用户确认的 provider allowlist。
+输入：`docs/safety-boundary.md`、`docs/account-remote-isolation-design.md`、C15 session guard、C16 UI confirmation、用户确认的 provider allowlist。
 
 拟新增/修改文件：
 
