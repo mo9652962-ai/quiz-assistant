@@ -13,3 +13,4 @@ frontend/test-results/
 frontend/playwright-report/
 work/e2e/
 work/e2e-deps/
+work/phase-c-deps/

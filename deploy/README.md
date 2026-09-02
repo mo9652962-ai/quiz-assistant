@@ -1,8 +1,8 @@
 # Phase C remote read-only pilot
 
-本目录只描述受控的远程试运行入口。当前实现仍以 SQLite 为业务后端；PostgreSQL
-连接器和迁移工具尚未交付，因此不能把 `QUIZ_DATABASE_URL=postgresql://...` 直接用于
-启动服务。
+本目录只描述受控的远程试运行入口。当前业务 API 仍以 SQLite 为后端；PostgreSQL
+schema、事务迁移 runner 和 SQLite 迁移快照工具已经交付，但应用 repository 尚未切换
+到 PostgreSQL，因此不能把 `QUIZ_DATABASE_URL=postgresql://...` 直接用于启动服务。
 
 ## 启动边界
 
@@ -31,6 +31,39 @@ FastAPI 必须只监听 `127.0.0.1:8765`，公开 HTTPS 入口交给 Caddy。远
 4. 先验证 `https://<domain>/api/health`、登录、题库读取、查询和复习读取；确认
    `POST /api/practice/sessions`、`POST /api/imports` 和 `POST /api/backups` 均返回
    `403` 且错误码为 `remote_read_only`。
+
+## 数据迁移
+
+先对本机数据库生成不含 session 的迁移快照：
+
+```powershell
+quiz snapshot-export --db data/quiz.db --out work/migration.snapshot.json
+```
+
+目标数据库必须是新文件或只包含初始化 bootstrap 数据；导入是事务性的、幂等的，
+不会导入任何 session token/hash：
+
+```powershell
+quiz snapshot-import --db data/remote-staging.db --source work/migration.snapshot.json
+```
+
+PostgreSQL schema migration 使用：
+
+```powershell
+python -m pip install -e ".[remote]"
+quiz postgres-migrate --database-url "$env:QUIZ_DATABASE_URL"
+```
+
+迁移 runner 会创建 `schema_migrations`，按 `migrations/postgres/*.sql` 的数字前缀顺序
+执行，并在任意 migration 失败时 rollback。应用切换到 PostgreSQL 之前，必须在 staging
+完成数据行数、workspace 隔离、登录/session 撤销和恢复演练。
+
+本地部署 smoke test：
+
+```powershell
+$env:PYTHONPATH = "src;work/phase-c-deps"
+python -m pytest tests/deployment/test_remote_smoke.py -q
+```
 
 不要把 SQLite 文件放到网络共享盘，不要让客户端直连数据库文件，也不要用已知的
 `local-owner/local-owner` 凭据作为公网账户。真正远程上线前还需要完成首个远程 owner

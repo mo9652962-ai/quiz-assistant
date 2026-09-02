@@ -17,7 +17,12 @@ from quiz_assistant.application.query_service import query_questions
 from quiz_assistant.application.review_service import review_queue
 from quiz_assistant.config import Settings
 from quiz_assistant.infrastructure.db import connect, initialize
+from quiz_assistant.infrastructure.postgres import migrate_postgres_url
 from quiz_assistant.infrastructure.repositories import create_session
+from quiz_assistant.infrastructure.sqlite_snapshot import (
+    export_sqlite_snapshot,
+    import_sqlite_snapshot,
+)
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -91,11 +96,23 @@ def _parser() -> argparse.ArgumentParser:
     backup.add_argument("--db", default=None)
     backup.add_argument("--dir", default=None)
     backup.add_argument("--force", action="store_true")
+
+    snapshot_export = subs.add_parser("snapshot-export", help="export a portable SQLite snapshot")
+    snapshot_export.add_argument("--db", default=None)
+    snapshot_export.add_argument("--out", required=True)
+
+    snapshot_import = subs.add_parser("snapshot-import", help="import a portable SQLite snapshot")
+    snapshot_import.add_argument("--db", default=None)
+    snapshot_import.add_argument("--source", required=True)
+
+    postgres = subs.add_parser("postgres-migrate", help="apply PostgreSQL schema migrations")
+    postgres.add_argument("--database-url", default=None)
+    postgres.add_argument("--migrations-dir", default=None)
     return parser
 
 
 def _settings(args: argparse.Namespace) -> Settings:
-    settings = Settings.from_env(args.db)
+    settings = Settings.from_env(getattr(args, "db", None))
     settings.ensure_dirs()
     return settings
 
@@ -163,6 +180,13 @@ def _export(db_path: Path, output: Path, fmt: str) -> None:
 
 def _legacy_main(argv: list[str]) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "postgres-migrate":
+        database_url = args.database_url or Settings.from_env().remote_database_url
+        if not database_url:
+            raise SystemExit("postgres-migrate requires --database-url or QUIZ_DATABASE_URL")
+        report = migrate_postgres_url(database_url, args.migrations_dir)
+        print(f"postgres migrations applied: {', '.join(report.applied) or 'none'}")
+        return 0
     settings = _settings(args)
     if args.command == "init":
         initialize(settings.db_path)
@@ -212,6 +236,17 @@ def _legacy_main(argv: list[str]) -> int:
     if args.command == "export":
         _export(settings.db_path, Path(args.out), args.format)
         print(f"exported: {Path(args.out).resolve()}")
+        return 0
+    if args.command == "snapshot-export":
+        report = export_sqlite_snapshot(settings.db_path, Path(args.out))
+        print(f"snapshot exported: {report.path.resolve()} (questions={report.question_count})")
+        return 0
+    if args.command == "snapshot-import":
+        report = import_sqlite_snapshot(Path(args.source), settings.db_path)
+        print(
+            f"snapshot imported: {report.path.resolve()} "
+            f"(questions={report.question_count}, skipped={report.skipped})"
+        )
         return 0
     if args.command == "backup":
         if args.action == "create":
@@ -333,6 +368,43 @@ def backup_command(
 ) -> None:
     """Create or restore a validated SQLite backup."""
     raise typer.Exit(_legacy_main(_args("backup", action, "--db", db, "--dir", directory, "--force" if force else None)))
+
+
+@app.command("snapshot-export")
+def snapshot_export_command(
+    out: str = typer.Option(..., "--out"),
+    db: str | None = typer.Option(None, "--db"),
+) -> None:
+    """Export a portable SQLite migration snapshot."""
+    raise typer.Exit(_legacy_main(_args("snapshot-export", "--out", out, "--db", db)))
+
+
+@app.command("snapshot-import")
+def snapshot_import_command(
+    source: str = typer.Option(..., "--source"),
+    db: str | None = typer.Option(None, "--db"),
+) -> None:
+    """Import a portable SQLite migration snapshot into a local database."""
+    raise typer.Exit(_legacy_main(_args("snapshot-import", "--source", source, "--db", db)))
+
+
+@app.command("postgres-migrate")
+def postgres_migrate_command(
+    database_url: str | None = typer.Option(None, "--database-url"),
+    migrations_dir: str | None = typer.Option(None, "--migrations-dir"),
+) -> None:
+    """Apply PostgreSQL schema migrations in one transaction."""
+    raise typer.Exit(
+        _legacy_main(
+            _args(
+                "postgres-migrate",
+                "--database-url",
+                database_url,
+                "--migrations-dir",
+                migrations_dir,
+            )
+        )
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
