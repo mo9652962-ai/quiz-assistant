@@ -79,15 +79,22 @@ def test_postgres_staging_smoke_requires_database_url_and_explicit_write_acknowl
 def test_windows_installer_is_user_facing_and_keeps_user_data_on_uninstall():
     installer = (ROOT / "packaging" / "quiz-assistant.iss").read_text(encoding="utf-8")
     build = (ROOT / "packaging" / "build-installer.ps1").read_text(encoding="utf-8")
+    ocr_check = (ROOT / "packaging" / "check-ocr.ps1").read_text(encoding="utf-8")
 
     assert "DefaultDirName={autopf}\\QuizAssistant" in installer
     assert "PrivilegesRequired=admin" in installer
     assert "recursesubdirs" in installer
-    assert "{localappdata}" not in installer
+    assert "{localappdata}\\QuizAssistant\\data" not in installer
     assert "[UninstallDelete]" not in installer
     assert "ISCC.exe" in build or '"iscc"' in build
     assert "Set-AuthenticodeSignature" in build
     assert "Get-AuthenticodeSignature" in build
+    assert "TESSERACT_CMD" in installer
+    assert "TesseractWarning" in installer
+    assert "ShellExec" in installer
+    assert "Get-Command tesseract" in ocr_check
+    assert "--list-langs" in ocr_check
+    assert "chi_sim" in ocr_check
 
 
 def test_configured_frontend_serves_spa_routes_without_touching_api_routes(tmp_path, monkeypatch):

@@ -2,7 +2,7 @@
 
 目标：在不破坏现有 CLI、domain/application service、SQLite 数据和 14 个测试的前提下，逐步交付 Web、合规边界和 Windows 发布能力。每一阶段遵循 **先写失败测试（RED）→最小实现（GREEN）→重构（REFACTOR）→回归与回滚演练**。
 
-当前进度：C14/C15 核心路径、C16 Vue 3/Vite 页面与本机 Playwright smoke、C17 AI allowlist/脱敏基础门禁已完成；Phase A/B 已实现 SQLite workspace 回填、local owner、Argon2 密码、可撤销服务端 session、角色/membership 和 API 数据隔离，并通过全量 Python 测试与 Ruff。Phase C 已交付 PostgreSQL 初始 schema/事务 migration runner、SQLite 无 session 迁移快照、PostgreSQL database target/repository 适配、远程只读 API 门禁、loopback/TLS/可信代理配置校验、显式远程 owner 幂等引导、Trusted Host、Caddy 示例和部署 smoke；真实 staging 联调、Phase D 远程写入/导入/备份恢复/workspace AI provider，以及 C18 的 Windows Authenticode 签名和跨机器安装验收仍待实施。C18 已完成 PyInstaller onedir、前端资源托管、独立数据目录启动器、端口诊断、uv 锁定、SQLite 在线备份演练、版本发布目录/SHA-256 manifest、Inno Setup 安装包和本机隔离安装/卸载 smoke。
+当前进度：C14/C15 核心路径、C16 Vue 3/Vite 页面与本机 Playwright smoke、C17 AI allowlist/脱敏基础门禁已完成；Phase A/B 已实现 SQLite workspace 回填、local owner、Argon2 密码、可撤销服务端 session、角色/membership 和 API 数据隔离，并通过全量 Python 测试与 Ruff。Phase C 已交付 PostgreSQL 初始 schema/事务 migration runner、SQLite 无 session 迁移快照、PostgreSQL database target/repository 适配、远程只读 API 门禁、loopback/TLS/可信代理配置校验、显式远程 owner 幂等引导、Trusted Host、Caddy 示例和部署 smoke；真实 staging 联调、Phase D 远程写入/导入/备份恢复/workspace AI provider，以及 C18 的 Windows Authenticode 签名和跨机器安装验收仍待实施。C18 已完成 PyInstaller onedir、前端资源托管、独立数据目录启动器、端口诊断、uv 锁定、SQLite 在线备份演练、版本发布目录/SHA-256 manifest、Inno Setup 安装包、本机隔离安装/卸载 smoke 和 Tesseract 安装前检测/预检脚本。
 
 ## 用户确认的账户与远程路线
 

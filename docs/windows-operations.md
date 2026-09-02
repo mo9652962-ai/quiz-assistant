@@ -32,6 +32,17 @@ Pop-Location
 `%LOCALAPPDATA%\QuizAssistant\data`，卸载不会删除用户数据库、备份或导出文件。安装包在没有
 签名证书时仍可构建，但 Windows 可能显示未知发布者；正式分发前必须使用组织证书签名。
 
+安装包在继续安装前会检测 `TESSERACT_CMD`、常见 Windows 安装路径和当前用户安装路径；未检测到时
+可打开 Tesseract 安装说明，但不会在用户不知情的情况下下载或安装第三方引擎。安装后可执行
+以下预检，确认 OCR 引擎和中文语言包：
+
+```powershell
+.\packaging\check-ocr.ps1 -RequireChinese
+```
+
+截图识别主要使用英文题面时可不要求 `chi_sim`；若识别中文题干，必须安装对应的
+`chi_sim.traineddata`。官方 Windows 安装说明可参考 [Tesseract OCR Windows wiki](https://github.com/UB-Mannheim/tesseract/wiki)。
+
 ## 发布目录和 SHA-256 清单
 
 正式交付前，将已构建的 onedir 目录复制到带版本号的发布目录，并生成不包含自身的 `release-manifest.json`：
