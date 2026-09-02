@@ -223,6 +223,7 @@ def create_app(
             score=result.score,
             evidence=result.evidence,
             normalizer_version=result.normalizer_version,
+            auto_answerable=reveal and result.status == "high_confidence" and bool(result.answer_keys),
             alternatives=[
                 AlternativeMatch(
                     question_id=item.question.id, score=item.score, method=item.method

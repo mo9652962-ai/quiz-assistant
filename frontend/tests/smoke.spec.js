@@ -16,7 +16,9 @@ test('user can search and complete a practice question without answer leakage', 
   await expect(page.getByText('Which sentence is grammatically correct?')).toBeVisible()
   await expect(page.getByText('第三人称单数主语 He 后使用 goes。')).not.toBeVisible()
 
-  await page.getByRole('radio', { name: /He goes to school/ }).check()
+  await page.getByRole('button', { name: '本地自动匹配' }).click()
+  await expect(page.getByText('已填入本地题库的高置信度答案；请检查后再提交。')).toBeVisible()
+  await expect(page.getByRole('radio', { name: /He goes to school/ })).toBeChecked()
   await page.getByRole('button', { name: '提交答案' }).click()
   await expect(page.getByText('回答正确')).toBeVisible()
   await expect(page.getByText('第三人称单数主语 He 后使用 goes。')).toBeVisible()

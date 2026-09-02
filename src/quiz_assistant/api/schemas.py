@@ -92,6 +92,7 @@ class MatchResponse(BaseModel):
     evidence: list[str]
     normalizer_version: str
     alternatives: list[AlternativeMatch]
+    auto_answerable: bool
 
 
 class PracticeSessionRequest(BaseModel):

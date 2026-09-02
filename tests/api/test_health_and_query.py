@@ -42,6 +42,25 @@ def test_query_requires_session_and_high_confidence_reveals_candidate(tmp_path: 
         json={"text": "Which sentence is grammatically correct?", "reveal": "candidate"},
     )
     assert result.json()["answer_keys"] == ["B"]
+    assert result.json()["auto_answerable"] is True
+
+
+def test_low_confidence_query_never_marks_auto_answerable(tmp_path: Path):
+    db_path = tmp_path / "quiz.db"
+    fixture = Path(__file__).parents[1] / "fixtures" / "sample_questions.json"
+    import_questions(fixture, db_path)
+    client = TestClient(create_app(db_path=db_path, session_token="test-session"))
+
+    result = client.post(
+        "/api/queries",
+        headers={"X-Quiz-Session": "test-session"},
+        json={"text": "Which sentence might be correct?", "reveal": "candidate"},
+    )
+
+    assert result.status_code == 200
+    assert result.json()["status"] == "needs_confirmation"
+    assert result.json()["answer_keys"] == []
+    assert result.json()["auto_answerable"] is False
 
 
 def test_practice_payload_does_not_reveal_correct_answers(tmp_path: Path):

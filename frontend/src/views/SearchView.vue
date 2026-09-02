@@ -39,6 +39,7 @@ async function search() {
     <h2 v-else>需要确认</h2>
     <div v-if="result.answer_texts.length" class="answer-list"><div v-for="(answer, index) in result.answer_texts" :key="answer"><strong>{{ result.answer_keys[index] }}</strong>{{ answer }}</div></div>
     <p v-else class="muted">未自动披露正确答案。请核对候选题目与证据后再决定下一步。</p>
+    <p v-if="result.auto_answerable" class="muted">本地题库已达到高置信度，可直接采用该答案；系统不会自动提交到第三方平台。</p>
     <dl class="evidence"><div><dt>匹配方法</dt><dd>{{ result.method }}</dd></div><div><dt>证据</dt><dd>{{ result.evidence.join('；') || '暂无' }}</dd></div></dl>
   </article>
 </template>

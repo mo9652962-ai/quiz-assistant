@@ -110,6 +110,7 @@ def _result_json(result) -> dict:
         "score": result.score,
         "evidence": result.evidence,
         "normalizer_version": result.normalizer_version,
+        "auto_answerable": result.status == "high_confidence" and bool(result.answer_keys),
         "alternatives": [
             {"question_id": item.question.id, "score": item.score, "method": item.method}
             for item in result.alternatives

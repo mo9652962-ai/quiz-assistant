@@ -10,6 +10,7 @@
 - 练习与复习：单选、多选、判断题、简答题；答题事件；轻量 SM-2 风格调度器；wrong/due 队列
 - 备份恢复：数据库副本 + SHA-256 manifest，恢复前校验并使用临时文件替换
 - AI 接口：安全的本地 stub 与可选 OpenAI-compatible adapter；真实网络默认关闭，结果不自动进入 active 题库
+- 本地自动答题辅助：高置信度匹配可填入本地练习，低置信度只给候选和证据，不自动提交外部平台
 
 ## Windows 快速开始
 
@@ -31,6 +32,10 @@ python -m quiz_assistant backup create
 ## CSV 字段
 
 必需字段为 `id,type,stem`；选择题使用 `option_a` 至 `option_d` 与 `correct_keys`，其它可选字段为 `explanation,tags,source_ref`。`correct_keys` 支持逗号或分号分隔。简答题把正确答案别名放在 `correct_keys`。
+
+## 题库导入与自动答题
+
+完整格式、dry-run、Web/API 导入方式和 JSON/JSONL/CSV 示例见 [`docs/import-and-auto-answer.md`](docs/import-and-auto-answer.md)。可直接复制 [`examples/questions.json`](examples/questions.json) 或 [`examples/questions.csv`](examples/questions.csv) 作为模板。
 
 ## 开发与验证
 

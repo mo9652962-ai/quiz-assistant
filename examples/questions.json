@@ -1,0 +1,25 @@
+[
+  {
+    "id": "english-basic-000001",
+    "bank": "english-basic",
+    "type": "single_choice",
+    "stem": "Which sentence is grammatically correct?",
+    "options": [
+      {"key": "A", "text": "He go to school."},
+      {"key": "B", "text": "He goes to school.", "correct": true},
+      {"key": "C", "text": "He going to school."},
+      {"key": "D", "text": "He gone to school."}
+    ],
+    "explanation": "第三人称单数主语 He 后使用 goes。",
+    "tags": ["语法", "一般现在时"],
+    "source": {"kind": "manual", "ref": "example"}
+  },
+  {
+    "id": "english-basic-000002",
+    "bank": "english-basic",
+    "type": "short_answer",
+    "stem": "Capital of France?",
+    "answer_aliases": ["Paris", "巴黎"],
+    "source": {"kind": "manual", "ref": "example"}
+  }
+]

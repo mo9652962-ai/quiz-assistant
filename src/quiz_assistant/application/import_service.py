@@ -27,6 +27,8 @@ def import_questions(
             for row_number, raw in records:
                 report.total += 1
                 try:
+                    if "__load_error__" in raw:
+                        raise ValueError(str(raw["__load_error__"]))
                     question = question_from_payload(raw)
                     if question_exists(db, question.id, workspace_id):
                         report.skipped_duplicate += 1
@@ -39,7 +41,14 @@ def import_questions(
                     ValueError,
                     KeyError,
                 ) as exc:  # row-level rejection is part of the public import contract
-                    rejected = RejectedRow(row_number=row_number, error=str(exc), raw=raw)
+                    rejected_raw = (
+                        {"line": raw["__raw_line__"]}
+                        if "__raw_line__" in raw
+                        else raw
+                    )
+                    rejected = RejectedRow(
+                        row_number=row_number, error=str(exc), raw=rejected_raw
+                    )
                     report.rejected.append(rejected)
                     rejected_lines.append(rejected.model_dump_json())
         except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:

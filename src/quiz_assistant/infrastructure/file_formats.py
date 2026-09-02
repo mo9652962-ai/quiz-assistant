@@ -13,6 +13,27 @@ def load_records(path: str | Path) -> Iterator[tuple[int, dict[str, object]]]:
             for row_number, row in enumerate(csv.DictReader(handle), start=2):
                 yield row_number, csv_row_to_payload(row)
         return
+    if path.suffix.lower() == ".jsonl":
+        with path.open("r", encoding="utf-8-sig") as handle:
+            for row_number, line in enumerate(handle, start=1):
+                if not line.strip():
+                    continue
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    yield row_number, {
+                        "__load_error__": f"invalid JSONL: {exc.msg}",
+                        "__raw_line__": line.rstrip("\r\n"),
+                    }
+                    continue
+                if not isinstance(item, dict):
+                    yield row_number, {
+                        "__load_error__": "JSONL row must be an object",
+                        "__raw_line__": line.rstrip("\r\n"),
+                    }
+                    continue
+                yield row_number, item
+        return
     with path.open("r", encoding="utf-8-sig") as handle:
         parsed = json.load(handle)
     if isinstance(parsed, dict):

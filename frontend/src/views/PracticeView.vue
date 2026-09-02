@@ -8,6 +8,7 @@ const currentIndex = ref(0)
 const selected = ref([])
 const shortAnswer = ref('')
 const result = ref(null)
+const autoAnswerMessage = ref('')
 const loading = ref(false)
 const error = ref('')
 const current = computed(() => session.value?.questions[currentIndex.value] || null)
@@ -17,6 +18,7 @@ async function start() {
   loading.value = true
   error.value = ''
   result.value = null
+  autoAnswerMessage.value = ''
   selected.value = []
   shortAnswer.value = ''
   try {
@@ -24,6 +26,29 @@ async function start() {
     currentIndex.value = 0
   } catch (err) {
     error.value = err.message || '无法开始练习。'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function autoAnswer() {
+  if (!current.value) return
+  loading.value = true
+  autoAnswerMessage.value = ''
+  try {
+    const match = await api.query({
+      text: current.value.stem,
+      options: current.value.options.map((option) => `${option.key}. ${option.text}`),
+      reveal: 'candidate',
+    })
+    if (!match.auto_answerable || !match.answer_keys.length) {
+      autoAnswerMessage.value = '本地题库无法给出高置信度答案，请人工确认后作答。'
+      return
+    }
+    selected.value = [...match.answer_keys]
+    autoAnswerMessage.value = '已填入本地题库的高置信度答案；请检查后再提交。'
+  } catch (err) {
+    autoAnswerMessage.value = err.message || '自动匹配失败，请手动作答。'
   } finally {
     loading.value = false
   }
@@ -68,12 +93,13 @@ onMounted(start)
     <div v-if="current.options.length" class="options" role="group" aria-label="答案选项">
       <label v-for="option in current.options" :key="option.key" class="option-row">
         <input v-if="isMultiple" v-model="selected" type="checkbox" :value="option.key" />
-        <input v-else v-model="selected" type="radio" name="practice-answer" :value="option.key" />
+        <input v-else :checked="selected.includes(option.key)" type="radio" name="practice-answer" :value="option.key" @change="selected = [option.key]" />
         <span><strong>{{ option.key }}</strong>{{ option.text }}</span>
       </label>
     </div>
     <input v-else v-model="shortAnswer" class="short-answer" aria-label="答案" placeholder="输入答案" />
-    <div class="action-row"><button class="button primary" :disabled="loading || (!selected.length && !shortAnswer.trim())" @click="submit">{{ loading ? '提交中…' : '提交答案' }}</button><button class="button ghost" @click="start">重新开始</button></div>
+    <div class="action-row"><button class="button primary" :disabled="loading || (!selected.length && !shortAnswer.trim())" @click="submit">{{ loading ? '提交中…' : '提交答案' }}</button><button class="button ghost" :disabled="loading" @click="autoAnswer">本地自动匹配</button><button class="button ghost" @click="start">重新开始</button></div>
+    <p v-if="autoAnswerMessage" class="muted auto-answer-message">{{ autoAnswerMessage }}</p>
     <section v-if="result" class="feedback" :class="result.is_correct ? 'feedback-good' : 'feedback-bad'">
       <strong>{{ result.is_correct ? '回答正确' : '回答错误' }}</strong>
       <p v-if="result.explanation">{{ result.explanation }}</p>
