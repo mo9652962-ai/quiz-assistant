@@ -38,6 +38,24 @@ def test_windows_operations_document_recovery_and_port_diagnostics():
     assert "127.0.0.1" in operations
 
 
+def test_windows_release_scripts_create_and_verify_hash_manifest():
+    release = (ROOT / "packaging" / "release.ps1").read_text(encoding="utf-8")
+    verify = (ROOT / "packaging" / "verify-release.ps1").read_text(encoding="utf-8")
+    operations = (ROOT / "docs" / "windows-operations.md").read_text(encoding="utf-8")
+
+    assert "Get-FileHash" in release
+    assert "release-manifest.json" in release
+    assert "ConvertTo-Json" in release
+    assert "quiz-assistant.exe" in release
+    assert "Get-FileHash" in verify
+    assert "ConvertFrom-Json" in verify
+    assert "release-manifest.json" in verify
+    assert "SHA-256" in operations
+    assert "verify-release.ps1" in operations
+    assert "Remove-Item" not in release
+    assert "Remove-Item" not in verify
+
+
 def test_configured_frontend_serves_spa_routes_without_touching_api_routes(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 

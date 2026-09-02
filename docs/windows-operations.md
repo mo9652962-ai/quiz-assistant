@@ -18,6 +18,17 @@ Pop-Location
 
 产物位于 `artifacts/onedir/quiz-assistant/`，首发使用目录包，不使用 onefile。安装目录可以替换，用户数据不会放在安装目录。
 
+## 发布目录和 SHA-256 清单
+
+正式交付前，将已构建的 onedir 目录复制到带版本号的发布目录，并生成不包含自身的 `release-manifest.json`：
+
+```powershell
+.\packaging\release.ps1
+.\packaging\verify-release.ps1 -ReleaseDir .\artifacts\releases\QuizAssistant-0.1.0-windows-x64
+```
+
+发布脚本不会覆盖已有目录；如果目标已存在，应显式选择新的 `-OutputDir` 或由维护者按既定保留策略处理。校验脚本会检查文件是否缺失、是否多出未登记文件、字节数和 SHA-256 是否一致。清单用于传输和回滚核验，不等同于代码签名；当前包仍需在具备组织证书后单独执行 Windows Authenticode 签名。
+
 ## 启动和数据目录
 
 ```powershell
