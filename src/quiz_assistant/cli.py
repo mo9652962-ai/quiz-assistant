@@ -6,6 +6,9 @@ import json
 import sys
 from pathlib import Path
 
+import typer
+from rich.console import Console
+
 from quiz_assistant import __version__
 from quiz_assistant.application.backup_service import create_backup, restore_backup
 from quiz_assistant.application.import_service import import_questions
@@ -15,6 +18,28 @@ from quiz_assistant.application.review_service import review_queue
 from quiz_assistant.config import Settings
 from quiz_assistant.infrastructure.db import connect, initialize
 from quiz_assistant.infrastructure.repositories import create_session
+
+app = typer.Typer(
+    no_args_is_help=True,
+    help="Local-first question bank practice assistant",
+    add_completion=True,
+)
+console = Console()
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"quiz-assistant {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _app_callback(
+    version: bool = typer.Option(
+        False, "--version", callback=_version_callback, is_eager=True, help="Show version"
+    ),
+) -> None:
+    """Local-first question bank practice assistant."""
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -135,7 +160,7 @@ def _export(db_path: Path, output: Path, fmt: str) -> None:
             writer.writerows(rows)
 
 
-def main(argv: list[str] | None = None) -> int:
+def _legacy_main(argv: list[str]) -> int:
     args = _parser().parse_args(argv)
     settings = _settings(args)
     if args.command == "init":
@@ -198,6 +223,122 @@ def main(argv: list[str] | None = None) -> int:
             print(f"backup restored: {settings.db_path.resolve()}")
         return 0
     return 1
+
+
+def _args(*parts: str | None) -> list[str]:
+    return [part for part in parts if part is not None]
+
+
+@app.command("init")
+def init_command(db: str | None = typer.Option(None, "--db")) -> None:
+    """Initialize the local database."""
+    raise typer.Exit(_legacy_main(_args("init", "--db", db)))
+
+
+@app.command("import")
+def import_command(
+    source: str = typer.Argument(...),
+    db: str | None = typer.Option(None, "--db"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Import a JSON or CSV question file."""
+    raise typer.Exit(
+        _legacy_main(_args("import", source, "--db", db, "--dry-run" if dry_run else None, "--json" if as_json else None))
+    )
+
+
+def _query_command(
+    command: str,
+    text: str,
+    option: list[str],
+    top: int,
+    bank: str | None,
+    db: str | None,
+    as_json: bool,
+) -> None:
+    argv = _args(command, "--text", text, "--top", str(top), "--bank", bank, "--db", db)
+    for item in option:
+        argv.extend(("--option", item))
+    if as_json:
+        argv.append("--json")
+    raise typer.Exit(_legacy_main(argv))
+
+
+@app.command("search")
+def search_command(
+    text: str = typer.Option(..., "--text"),
+    option: list[str] = typer.Option([], "--option"),  # noqa: B008 - Typer declaration
+    top: int = typer.Option(5, "--top", min=1, max=20),
+    bank: str | None = typer.Option(None, "--bank"),
+    db: str | None = typer.Option(None, "--db"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Find a question and its candidate answer."""
+    _query_command("search", text, option, top, bank, db, as_json)
+
+
+@app.command("answer")
+def answer_command(
+    text: str = typer.Option(..., "--text"),
+    option: list[str] = typer.Option([], "--option"),  # noqa: B008 - Typer declaration
+    top: int = typer.Option(5, "--top", min=1, max=20),
+    bank: str | None = typer.Option(None, "--bank"),
+    db: str | None = typer.Option(None, "--db"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Find a question and its candidate answer."""
+    _query_command("answer", text, option, top, bank, db, as_json)
+
+
+@app.command("practice")
+def practice_command(
+    bank: str | None = typer.Option(None, "--bank"),
+    tag: str | None = typer.Option(None, "--tag"),
+    count: int = typer.Option(10, "--count", min=0, max=100),
+    db: str | None = typer.Option(None, "--db"),
+) -> None:
+    """Start an interactive practice session."""
+    raise typer.Exit(_legacy_main(_args("practice", "--bank", bank, "--tag", tag, "--count", str(count), "--db", db)))
+
+
+@app.command("review")
+def review_command(
+    wrong: bool = typer.Option(False, "--wrong"),
+    due: bool = typer.Option(False, "--due"),
+    limit: int = typer.Option(20, "--limit", min=1, max=100),
+    db: str | None = typer.Option(None, "--db"),
+) -> None:
+    """Show wrong or due questions."""
+    raise typer.Exit(_legacy_main(_args("review", "--wrong" if wrong else None, "--due" if due else None, "--limit", str(limit), "--db", db)))
+
+
+@app.command("export")
+def export_command(
+    out: str = typer.Option(..., "--out"),
+    fmt: str = typer.Option("csv", "--format"),
+    db: str | None = typer.Option(None, "--db"),
+) -> None:
+    """Export answer history."""
+    raise typer.Exit(_legacy_main(_args("export", "--format", fmt, "--out", out, "--db", db)))
+
+
+@app.command("backup")
+def backup_command(
+    action: str = typer.Argument(...),
+    db: str | None = typer.Option(None, "--db"),
+    directory: str | None = typer.Option(None, "--dir"),
+    force: bool = typer.Option(False, "--force"),
+) -> None:
+    """Create or restore a validated SQLite backup."""
+    raise typer.Exit(_legacy_main(_args("backup", action, "--db", db, "--dir", directory, "--force" if force else None)))
+
+
+def main(argv: list[str] | None = None) -> int:
+    if argv is None:
+        app()
+        return 0
+    return _legacy_main(argv)
 
 
 if __name__ == "__main__":

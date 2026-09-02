@@ -3,7 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import urllib.request
+from collections.abc import Iterable
+from urllib.parse import urlsplit
 
+from quiz_assistant.infrastructure.ai.privacy import redact_provider_text
 from quiz_assistant.infrastructure.ai.protocol import (
     Candidate,
     ProviderResult,
@@ -19,9 +22,22 @@ class OpenAICompatibleProvider:
     The response is still validated by the caller before it can affect local data.
     """
 
-    def __init__(self, base_url: str, api_key: str, model: str, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        model: str,
+        timeout: float = 30.0,
+        allowed_base_urls: Iterable[str] = (),
+    ) -> None:
+        normalized = base_url.rstrip("/")
+        if urlsplit(normalized).scheme != "https":
+            raise ValueError("AI provider must use HTTPS")
+        allowlist = {item.rstrip("/") for item in allowed_base_urls}
+        if normalized not in allowlist:
+            raise ValueError("AI provider base URL is not in the allowlist")
         self.base_url, self.api_key, self.model, self.timeout = (
-            base_url.rstrip("/"),
+            normalized,
             api_key,
             model,
             timeout,
@@ -39,9 +55,14 @@ class OpenAICompatibleProvider:
                     "role": "user",
                     "content": json.dumps(
                         {
-                            "stem": request.question.stem,
-                            "options": [o.model_dump() for o in request.question.options],
-                            "context": request.context,
+                            "stem": redact_provider_text(request.question.stem),
+                            "options": [
+                                {"key": o.key, "text": redact_provider_text(o.text)}
+                                for o in request.question.options
+                            ],
+                            "context": redact_provider_text(request.context)
+                            if request.context
+                            else None,
                         },
                         ensure_ascii=False,
                     ),

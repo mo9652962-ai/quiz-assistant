@@ -7,4 +7,9 @@ data/quiz.db
 data/rejected.jsonl
 data/backups/*
 data/exports/*
-
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+work/e2e/
+work/e2e-deps/
