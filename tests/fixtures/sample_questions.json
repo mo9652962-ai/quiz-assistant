@@ -1,0 +1,37 @@
+[
+  {
+    "id": "eng-000001",
+    "bank": "english-basic",
+    "version": 1,
+    "type": "single_choice",
+    "stem": "Which sentence is grammatically correct?",
+    "options": [
+      {"key": "A", "text": "He go to school."},
+      {"key": "B", "text": "He goes to school.", "correct": true},
+      {"key": "C", "text": "He going to school."},
+      {"key": "D", "text": "He gone to school."}
+    ],
+    "explanation": "第三人称单数主语 He 后使用 goes。",
+    "tags": ["语法", "一般现在时"],
+    "source": {"kind": "manual", "ref": "sample"}
+  },
+  {
+    "id": "eng-000002",
+    "bank": "english-basic",
+    "type": "multiple_choice",
+    "stem": "Select the vowels.",
+    "options": [
+      {"key": "A", "text": "A", "correct": true},
+      {"key": "B", "text": "B"},
+      {"key": "C", "text": "E", "correct": true}
+    ]
+  },
+  {
+    "id": "eng-000003",
+    "bank": "english-basic",
+    "type": "true_false",
+    "correct": "A",
+    "stem": "Water freezes at 0 degrees Celsius."
+  }
+]
+
