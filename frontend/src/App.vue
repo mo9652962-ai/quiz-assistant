@@ -7,6 +7,7 @@ const links = [
   { to: '/practice', label: '开始练习' },
   { to: '/review', label: '错题复习' },
   { to: '/import', label: '导入题库' },
+  { to: '/ocr', label: '截图识别' },
   { to: '/settings', label: '设置与备份' },
 ]
 </script>

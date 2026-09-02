@@ -11,6 +11,8 @@
 - 备份恢复：数据库副本 + SHA-256 manifest，恢复前校验并使用临时文件替换
 - AI 接口：安全的本地 stub 与可选 OpenAI-compatible adapter；真实网络默认关闭，结果不自动进入 active 题库
 - 本地自动答题辅助：高置信度匹配可填入本地练习，低置信度只给候选和证据，不自动提交外部平台
+- 截图/OCR：批量识别题干和选项；OCR 与本地题库匹配需同时达到高置信度才允许填入
+- 浏览器只填入辅助：Tampermonkey userscript 仅更新标准 radio/checkbox，不提交页面
 
 ## Windows 快速开始
 

@@ -52,6 +52,11 @@ export function createApiClient(fetchImpl = fetch) {
       form.append('dry_run', String(dryRun))
       return request('/api/imports', { method: 'POST', body: form })
     },
+    ocrRecognize: (files) => {
+      const form = new FormData()
+      for (const file of files) form.append('files', file)
+      return request('/api/ocr/recognize', { method: 'POST', body: form })
+    },
     backup: (payload) => request('/api/backups', { method: 'POST', body: JSON.stringify(payload) }),
   }
 }

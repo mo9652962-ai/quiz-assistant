@@ -22,6 +22,42 @@ python -m quiz_assistant import examples/questions.json --db data/quiz.db --json
 
 `dry-run` 只校验和统计，不写入题目。正式导入后，重复 `id` 会跳过；逐行校验失败会计入拒绝数，并写入数据库目录下的 `rejected.jsonl`。导入前应确认题库内容有合法来源和使用授权。
 
+## 截图/OCR 识别
+
+前端“截图识别”页和 `POST /api/ocr/recognize` 支持一次上传多张题目截图，服务端在本机解析题干和 A-H 选项，不把图片或 OCR 文本发送给外部 AI provider。每个文件限制为 10 MiB，单次最多 10 个文件；当前识别语言为英文，图片格式为 PNG/JPEG/WebP/BMP。
+
+Python 依赖和 Windows OCR 引擎需要分别安装：
+
+```powershell
+python -m pip install -e ".[ocr]"
+```
+
+同时安装 [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)，并将 `tesseract.exe` 所在目录加入当前用户的 `PATH`，然后重新打开终端或重启服务。没有 Tesseract 时，接口会返回明确的 503，不会静默猜答案。
+
+批量接口示例：
+
+```powershell
+curl.exe -H "X-Quiz-Session: local-session" `
+  -F "files=@screen-1.png" `
+  -F "files=@screen-2.jpg" `
+  http://127.0.0.1:8765/api/ocr/recognize
+```
+
+返回内容包含每个文件的 OCR 原文、题干、选项、结构状态和置信度。只有当 OCR 结构为 `high_confidence`，并且题干/选项同时命中本地题库的 `high_confidence` 匹配时，题目才会标记 `fill_allowed: true` 并返回答案键；OCR 低置信度、结构不完整或题库匹配不确定时只返回候选/问题，不会猜测或填入。图片仍应由用户复核，尤其要检查 `I/l`、`O/0`、标点和多选题选项。
+
+## 浏览器“只填入、不提交”辅助模式
+
+`browser/quiz-assistant-fill-only.user.js` 是 Tampermonkey/Greasemonkey userscript。安装后应把脚本头部的 `@match *://*/*` 收窄为实际允许的练习站点；脚本只在用户点击 `Quiz Fill Only` 后读取当前可见/选中文本，调用本机 API，并通过 `input`/`change` 事件勾选标准 radio/checkbox 控件。
+
+首次使用可在目标页面控制台配置本地 API：
+
+```javascript
+localStorage.setItem('quiz_assistant_api', 'http://127.0.0.1:8765')
+localStorage.setItem('quiz_assistant_session', 'local-session')
+```
+
+脚本不会调用控件的 `.click()`，不会查找或触发 submit，也不处理登录、验证码、反作弊或自定义提交按钮。填入后必须由用户检查；题库匹配不是高置信度时，脚本保持页面不变并显示原因。
+
 也可以在 Web 页面操作：
 
 1. 打开“导入题库”。
@@ -81,6 +117,7 @@ JSONL 只需把多个 JSON 对象逐行排列，不能把整个文件写成一�
 - CLI：`python -m quiz_assistant answer --text "题干" --option "A. 选项" --json`。
 - Web：在“查询答案”粘贴题干，可附带选项。
 - 练习页：点击“本地自动匹配”，系统只会在高置信度时填入选项，仍需用户检查并点击“提交答案”。
+- 浏览器辅助：安装 `browser/quiz-assistant-fill-only.user.js` 后点击 `Quiz Fill Only`，仅填入当前页面控件，不提交外部页面。
 
 返回 `auto_answerable: true` 且 `status: "high_confidence"` 时，才允许自动填入/直接显示本地答案。`needs_confirmation` 或 `no_match` 只给候选、分数和证据，不自动作答。
 

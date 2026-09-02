@@ -65,6 +65,7 @@ from quiz_assistant.application.practice_service import start_practice, submit_a
 from quiz_assistant.application.query_service import query_questions
 from quiz_assistant.application.review_service import review_queue
 from quiz_assistant.infrastructure.db import SCHEMA_VERSION, connect, initialize
+from quiz_assistant.infrastructure.ocr import OCRInputError, OCRUnavailableError, recognize_image
 from quiz_assistant.infrastructure.repositories import create_session
 
 
@@ -174,6 +175,69 @@ def create_app(
         return HealthResponse(
             status="ok", schema_version=SCHEMA_VERSION, ai_enabled=app.state.ai_enabled
         )
+
+    @app.post("/api/ocr/recognize")
+    async def recognize_ocr(
+        files: list[UploadFile] = File(...),  # noqa: B008 - FastAPI dependency declaration
+        token: str | None = Depends(_session_dependency),
+    ) -> dict:
+        actor = _check_session(app, token)
+        if not files or len(files) > 10:
+            raise HTTPException(status_code=400, detail="upload between 1 and 10 images")
+        items = []
+        for upload in files:
+            try:
+                raw = await upload.read()
+                document = recognize_image(raw, upload.filename or "upload.png")
+            except OCRUnavailableError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            except OCRInputError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            questions = []
+            for question in document.questions:
+                match = query_questions(
+                    app.state.db_target,
+                    question.stem,
+                    [f"{option.key}. {option.text}" for option in question.options],
+                    workspace_id=actor.workspace_id,
+                )
+                reveal = (
+                    question.status == "high_confidence" and match.status == "high_confidence"
+                )
+                questions.append(
+                    {
+                        "number": question.number,
+                        "stem": question.stem,
+                        "options": [
+                            {"key": option.key, "text": option.text}
+                            for option in question.options
+                        ],
+                        "confidence": question.confidence,
+                        "status": question.status,
+                        "issues": question.issues,
+                        "fill_allowed": reveal and bool(match.answer_keys),
+                        "local_match": {
+                            "status": match.status,
+                            "question_id": match.question_id,
+                            "score": match.score,
+                            "answer_keys": match.answer_keys if reveal else [],
+                            "answer_texts": match.answer_texts if reveal else [],
+                            "auto_answerable": reveal and bool(match.answer_keys),
+                        },
+                    }
+                )
+            items.append(
+                {
+                    "source_name": upload.filename or "upload.png",
+                    "recognized_text": document.text,
+                    "questions": questions,
+                }
+            )
+        return {
+            "total_files": len(items),
+            "total_questions": sum(len(item["questions"]) for item in items),
+            "items": items,
+        }
 
     @app.post("/api/auth/login", response_model=LoginResponse)
     def login(payload: LoginRequest, response: Response) -> LoginResponse:
