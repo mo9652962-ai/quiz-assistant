@@ -1,7 +1,15 @@
+import inspect
 import json
 from pathlib import Path
 
-from quiz_assistant.application.backup_service import create_backup, restore_backup
+import pytest
+
+from quiz_assistant.application.backup_service import (
+    _online_backup,
+    create_backup,
+    restore_backup,
+    sha256,
+)
 from quiz_assistant.application.import_service import import_questions
 from quiz_assistant.application.practice_service import submit_answer
 from quiz_assistant.application.query_service import query_questions
@@ -66,6 +74,37 @@ def test_duplicate_import_does_not_duplicate_question(tmp_path: Path):
     db_path = tmp_path / "quiz.db"
     assert import_questions(source, db_path).imported == 1
     assert import_questions(source, db_path).skipped_duplicate == 1
+
+
+def test_online_backup_is_sqlite_consistent_and_manifested(tmp_path: Path):
+    db_path = tmp_path / "quiz.db"
+    fixture = Path(__file__).parents[1] / "fixtures" / "sample_questions.json"
+    import_questions(fixture, db_path)
+
+    backup = create_backup(db_path, tmp_path / "backups")
+    backup_db = backup / db_path.name
+
+    assert ".backup(" in inspect.getsource(_online_backup)
+    with connect(backup_db) as db:
+        assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        assert db.execute("SELECT COUNT(*) FROM questions").fetchone()[0] == 3
+
+
+def test_restore_rejects_database_that_passes_hash_but_fails_integrity(tmp_path: Path):
+    db_path = tmp_path / "quiz.db"
+    fixture = Path(__file__).parents[1] / "fixtures" / "sample_questions.json"
+    import_questions(fixture, db_path)
+    backup = create_backup(db_path, tmp_path / "backups")
+    backup_db = backup / db_path.name
+    backup_db.write_bytes(b"not a sqlite database")
+    manifest = json.loads((backup / "manifest.json").read_text(encoding="utf-8"))
+    manifest["files"][db_path.name] = sha256(backup_db)
+    (backup / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="integrity"):
+        restore_backup(backup, db_path, force=True)
+    with connect(db_path) as db:
+        assert db.execute("SELECT COUNT(*) FROM questions").fetchone()[0] == 3
 
 
 def test_short_answer_aliases_survive_database_roundtrip(tmp_path: Path):

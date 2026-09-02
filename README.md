@@ -51,8 +51,8 @@ Windows onedir 构建和数据/备份回滚操作见 [`docs/windows-operations.m
 ## 开发与验证
 
 ```powershell
-python -m pytest
-ruff check src tests
+uv run --locked --extra dev --extra ocr --extra package pytest
+uv run --locked --extra dev --extra ocr --extra package ruff check src tests
 ```
 
 本实现刻意使用 Python 标准库 `sqlite3` 和 `argparse`，降低 Windows 离线运行的依赖面；Pydantic、pytest、ruff 在 `pyproject.toml` 中声明。CLI 保持子命令契约稳定，后续可在 API 稳定后替换为 Typer/Rich 外壳。没有网络配置时，AI 不会发起请求。

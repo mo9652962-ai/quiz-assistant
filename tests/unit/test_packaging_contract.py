@@ -3,6 +3,13 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 
 
+def test_project_has_versioned_uv_lockfile():
+    lockfile = ROOT / "uv.lock"
+
+    assert lockfile.is_file()
+    assert "version = 1" in lockfile.read_text(encoding="utf-8")
+
+
 def test_windows_packaging_is_onedir_and_keeps_data_outside_install_dir():
     spec = (ROOT / "packaging" / "quiz.spec").read_text(encoding="utf-8")
     build = (ROOT / "packaging" / "build.ps1").read_text(encoding="utf-8")

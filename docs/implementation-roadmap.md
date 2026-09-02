@@ -21,7 +21,7 @@
 | C15 | FastAPI API | API app、schema、auth、health/queries/practice/reviews/import/backup | API 目录可移除，CLI 不受影响 |
 | C16 | Vue 3/Vite 前端与 E2E | 页面、API client、Playwright 测试 | 继续使用 CLI；不写入真实数据 |
 | C17 | 合规与安全边界 | allowlist、确认、审计、停止/拒绝路径 | 关闭外部 provider 和写操作开关 |
-| C18 | 进行中 | PyInstaller onedir、前端资源托管、独立数据目录启动器、端口诊断已完成；下一步为 uv 锁定、SQLite 在线备份演练和正式发布验收。 | 回到 Python+uv 运行包和已验证备份 |
+| C18 | 进行中 | PyInstaller onedir、前端资源托管、独立数据目录启动器、端口诊断、SQLite `Connection.backup()` 实现和 `uv.lock` 已完成并通过本机验证；下一步为在线备份/恢复演练和正式发布验收。 | 回到 Python+uv 运行包和已验证备份 |
 
 ## C14 — CLI
 
@@ -140,7 +140,7 @@ Playwright 官方推荐 pytest plugin，并支持 Chromium/Firefox/WebKit 与隔
 拟新增/修改文件：
 
 - `uv.lock`、`pyproject.toml`、`packaging/quiz.spec`、`packaging/build.ps1`、`packaging/run.ps1`。
-- `src/quiz_assistant/application/backup_service.py`（采用 `Connection.backup()` 的实现方案）、`migrations/` 新版本和集成测试。
+- `src/quiz_assistant/application/backup_service.py`（已采用 `Connection.backup()`）、`migrations/` 新版本和集成测试。
 - `docs/windows-operations.md`（如用户确认需要再新增）。
 
 失败测试先写：

@@ -7,12 +7,14 @@
 ```powershell
 cd C:\path\to\quiz_assistant
 py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev,ocr,package]"
+uv sync --locked --extra dev --extra ocr --extra package
 Push-Location frontend
 npm ci
 Pop-Location
 .\packaging\build.ps1
 ```
+
+如果尚未安装 uv，可先按 uv 官方 Windows 安装方式安装；项目要求使用仓库内的 `uv.lock`，不要手工编辑锁文件。构建前可执行 `uv lock --check`，发现 `pyproject.toml` 与锁文件不一致时先重新生成并复核 diff。
 
 产物位于 `artifacts/onedir/quiz-assistant/`，首发使用目录包，不使用 onefile。安装目录可以替换，用户数据不会放在安装目录。
 
