@@ -1,4 +1,20 @@
+<div align="center">
+
 # Quiz Assistant
+
+**本地优先的题库 CLI：导入 · 模糊匹配 · 练习 · SM-2 复习 · 备份恢复**
+
+A local-first question-bank CLI with import, fuzzy matching, practice, SM-2 review, and backup/restore.
+
+![Python](https://img.shields.io/badge/python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-2563EB?style=flat-square)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
+
+</div>
+
+---
+
 
 一个本地优先的题库、匹配和练习 CLI。它只面向自有题库与学习复盘，不操作第三方考试页面、不自动提交答案，也不绕过登录、验证码或反作弊机制。
 
@@ -68,3 +84,7 @@ uv run --locked --extra dev --extra ocr --extra package ruff check src tests
 - [OpenAI Chat API Reference](https://developers.openai.com/api/reference/resources/chat)：结构化 JSON Schema 优先于旧 JSON mode 的接口依据
 
 这些来源只用于架构研究，没有复制其题库内容或代码；使用第三方题库前仍需自行核验许可证和数据授权。
+
+## 📄 许可证
+
+本项目基于 [MIT License](LICENSE) 开源。觉得有用的话，欢迎点个 ⭐ Star 支持一下！
