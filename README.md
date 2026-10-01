@@ -4,6 +4,8 @@
 
 **本地优先的题库 CLI：导入 · 模糊匹配 · 练习 · SM-2 复习 · 备份恢复**
 
+> 📈 本项目是 [墨题 · 英语刷题机](https://github.com/mo9652962-ai/english-multiple-choice-practice-machine) 的轻量 CLI 前身——需要完整学习工作台（FSRS / 错题本 / AI 辅助 / 三端）请用墨题。
+
 A local-first question-bank CLI with import, fuzzy matching, practice, SM-2 review, and backup/restore.
 
 ![Python](https://img.shields.io/badge/python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)
