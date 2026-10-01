@@ -90,3 +90,7 @@ uv run --locked --extra dev --extra ocr --extra package ruff check src tests
 ## 📄 许可证
 
 本项目基于 [MIT License](LICENSE) 开源。觉得有用的话，欢迎点个 ⭐ Star 支持一下！
+
+---
+
+📌 **更多**：[作者仓库矩阵](https://github.com/mo9652962-ai)（墨题刷题机 / 第二大脑 / 安全三部曲 / 孵化线）
