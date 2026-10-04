@@ -13,6 +13,18 @@ A local-first question-bank CLI with import, fuzzy matching, practice, SM-2 revi
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-2563EB?style=flat-square)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
 
+<p align="center">
+  <a href="#windows-快速开始">⚡ 快速开始</a>
+  ·
+  <a href="#当前交付">📦 功能交付</a>
+  ·
+  <a href="#题库导入与自动答题">📥 题库导入</a>
+  ·
+  <a href="#开发与验证">🧪 验证命令</a>
+  ·
+  <a href="https://github.com/mo9652962-ai/quiz-assistant/issues">💬 反馈</a>
+</p>
+
 </div>
 
 ---
@@ -90,6 +102,12 @@ uv run --locked --extra dev --extra ocr --extra package ruff check src tests
 ## 📄 许可证
 
 本项目基于 [MIT License](LICENSE) 开源。觉得有用的话，欢迎点个 ⭐ Star 支持一下！
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=mo9652962-ai/quiz-assistant&type=Date)](https://star-history.com/#mo9652962-ai/quiz-assistant&Date)
+
+</div>
 
 ---
 
