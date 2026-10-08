@@ -99,9 +99,13 @@ uv run --locked --extra dev --extra ocr --extra package ruff check src tests
 
 这些来源只用于架构研究，没有复制其题库内容或代码；使用第三方题库前仍需自行核验许可证和数据授权。
 
-## 📄 许可证
+## 📄 许可证、安全与隐私 (License, Security & Privacy)
 
-本项目基于 [MIT License](LICENSE) 开源。觉得有用的话，欢迎点个 ⭐ Star 支持一下！
+- **开源许可证**：本项目基于 [MIT License](LICENSE) 开源。
+- **安全政策**：详见 [SECURITY.md](SECURITY.md)（参数化防 SQL 注入、离线沙箱）。
+- **隐私保护**：详见 [PRIVACY.md](PRIVACY.md)（100% 本地优先存储、零遥测）。
+
+觉得有用的话，欢迎点个 ⭐ Star 支持一下！
 
 <div align="center">
 
